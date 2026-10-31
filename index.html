@@ -144,6 +144,8 @@ textarea#aiAnswer:focus,#gkey:focus{outline:none;border-color:var(--accent)}
 .fitem .fbody{flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer}
 .fitem .n{font-size:12.5px;color:var(--muted)}
 .fitem.bad{border-color:var(--warn)}
+.fbtns{display:flex;flex-direction:column;gap:4px;flex:none}
+.fbtns button{padding:4px 9px;font-size:12px;white-space:nowrap}
 .fitem .why{font-size:12px;color:var(--warn);margin-top:2px}
 .fitem.math{border-color:var(--accent);border-style:dashed}
 .fitem .mpv{font-family:var(--f-formula);font-size:17px;text-align:left;padding:6px 0;background:none}
@@ -420,10 +422,10 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
     <div class="found" id="found"></div>
     <div class="inrow" id="foundActs" style="margin-top:10px" hidden>
       <button class="primary" id="copyAllRich">📄 모두 한글 본문용으로 복사</button>
-      <button id="copyAllHwp">∑ 모두 수식 편집기용으로 복사</button>
+      <button id="copyAllHwp">∑ 모두 수식 편집기용 (Ctrl+N,M 창에)</button>
       <button id="addAllFound">＋ 모아두기에 저장</button>
     </div>
-    <p class="hint">사진 속 글자를 읽는 거라 가끔 틀릴 수 있어요. 식을 누르면 위 칸에서 확인하고 고칠 수 있어요.</p>
+    <p class="hint"><b>본문용</b>은 한글 문서에 바로 <kbd>Ctrl</kbd>+<kbd>V</kbd>, <b>수식 편집기용</b>은 <kbd>Ctrl</kbd>+<kbd>N</kbd>,<kbd>M</kbd>으로 연 수식 창 안에 붙여 넣으세요. 식을 누르면 위 칸에서 고칠 수 있어요.</p>
 
     <details class="more">
       <summary>설정 · 키가 없을 때</summary>
@@ -890,6 +892,7 @@ function copyText(text,btn,showNode){
   try{navigator.clipboard.writeText(text).then(()=>{flash(btn);toast("복사했어요. 한글에서 Ctrl+V 하세요.")},fb)}catch(e){fb()}
 }
 function copyRich(html,text,btn){
+  html=`<html><head><meta charset="utf-8"></head><body><!--StartFragment--><p style="font-family:'Times New Roman',serif;font-size:11pt">${html.split("<br>").join("</p><p style=\"font-family:'Times New Roman',serif;font-size:11pt\">")}</p><!--EndFragment--></body></html>`;
   const fb=()=>{const d=document.createElement("div");d.innerHTML=html;d.style.cssText="position:fixed;left:-9999px;top:0;white-space:pre";document.body.appendChild(d);const ok=legacyCopy(d);d.remove();getSelection().removeAllRanges();
     if(ok){flash(btn);toast("복사했어요. 한글 본문에 Ctrl+V 하세요.")}else copyText(text,btn)};
   try{
@@ -1019,7 +1022,7 @@ function toHwpMath(src){
   return out.map(u=>u.t==="div"?"/":u.v).join(" ").replace(/\{t1\} over \{2\}/g,"t_{1/2}").replace(/\s+/g," ").replace(/\( /g,"(").replace(/ \)/g,")").trim();
 }
 
-function hwpToHtml(code){
+function hwpToHtml(code,inline){
   const W={cdot:"·",times:"×",APPROX:"≈",DELTA:"Δ",delta:"δ",alpha:"α",beta:"β",gamma:"γ",lambda:"λ",mu:"μ",epsilon:"ε",pi:"π",theta:"θ",sigma:"σ",SIGMA:"Σ",sum:"∑",circ:"°",prime:"′",inf:"∞",LEFT:"",RIGHT:"",left:"",right:"",rm:"",it:"","->":"→","<->":"⇌","<=":"≤",">=":"≥","!=":"≠"};
   const esc2=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   let i=0,upright=false;const s=String(code);
@@ -1043,7 +1046,7 @@ function hwpToHtml(code){
     let out=[];
     for(let k=0;k<items.length;k++){
       const it=items[k];
-      if(it.w==="over"&&out.length&&items[k+1]){const a=out.pop();const b=render([items[++k]]);out.push(`<span class="fr"><span>${a}</span><span>${b}</span></span>`);continue}
+      if(it.w==="over"&&out.length&&items[k+1]){const a=out.pop();const b=render([items[++k]]);if(inline){const w=x=>/^(<i>)?[A-Za-z0-9.]+(<\/i>)?$/.test(x.trim())?x.trim():`(${x.trim()})`;out.push(`${w(a)}/${w(b)}`)}else out.push(`<span class="fr"><span>${a}</span><span>${b}</span></span>`);continue}
       if(it.sx){const a=render([it.arg]);const tag=it.sx==="_"?"sub":"sup";if(out.length)out[out.length-1]+=`<${tag}>${a}</${tag}>`;else out.push(`<${tag}>${a}</${tag}>`);continue}
       if(it.g){out.push(render(it.g));continue}
       const w=it.w;
@@ -1061,6 +1064,12 @@ function hwpToHtml(code){
   return render(parseSeq(null)).trim();
 }
 
+const SUPM={"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","+":"⁺","-":"⁻","n":"ⁿ","m":"ᵐ","x":"ˣ","a":"ᵃ","b":"ᵇ","c":"ᶜ","d":"ᵈ","e":"ᵉ","i":"ⁱ","k":"ᵏ","t":"ᵗ"};
+const SUBM={"0":"₀","1":"₁","2":"₂","3":"₃","4":"₄","5":"₅","6":"₆","7":"₇","8":"₈","9":"₉","+":"₊","-":"₋","a":"ₐ","e":"ₑ","o":"ₒ","x":"ₓ","t":"ₜ","m":"ₘ","n":"ₙ","p":"ₚ","c":"꜀"};
+function mathPlain(code){const h=hwpToHtml(code,true);const d=document.createElement("div");
+  d.innerHTML=h.replace(/<sub>(.*?)<\/sub>/g,(m,x)=>{const t=x.replace(/<[^>]+>/g,"");return [...t].every(c=>SUBM[c])?[...t].map(c=>SUBM[c]).join(""):"_"+t})
+               .replace(/<sup>(.*?)<\/sup>/g,(m,x)=>{const t=x.replace(/<[^>]+>/g,"").replace(/\s/g,"");return [...t].every(c=>SUPM[c])?[...t].map(c=>SUPM[c]).join(""):"^("+t+")"});
+  return d.textContent.replace(/\s+/g," ").trim()}
 function isMathLike(eq){
   const t=eq.replace(/<=>|->|=>|→|⇌/g,"");
   return /=/.test(t)||/\/dt|d\[|\bk\[|\^[a-z]\b|\bln\b|\blog\b/.test(eq);
@@ -1255,28 +1264,34 @@ function renderFound(){
     if(f.kind==="math"){
       d.className="fitem math";
       let pv="";try{pv=hwpToHtml(f.eq)}catch(e){}
-      d.innerHTML=`<div class="fbody"><span class="n"></span><span class="pv mpv render">${pv}</span><code class="mcode"></code></div><button>수식용 복사</button>`;
+      d.innerHTML=`<div class="fbody"><span class="n"></span><span class="pv mpv render">${pv}</span><code class="mcode"></code></div><div class="fbtns"><button data-k="body">본문용 복사</button><button data-k="eq">수식 편집기용</button></div>`;
       d.querySelector(".n").textContent=(photos.length>1&&f.photo?`사진 ${f.photo} · `:"")+"수식 · "+(f.name||"수학 식");
       d.querySelector(".mcode").textContent=f.eq;
-      d.querySelector("button").addEventListener("click",e=>copyText(f.eq,e.currentTarget));
+      d.querySelector('[data-k="body"]').addEventListener("click",e=>copyRich(hwpToHtml(f.eq,true),mathPlain(f.eq),e.currentTarget));
+      d.querySelector('[data-k="eq"]').addEventListener("click",e=>{copyText(f.eq,e.currentTarget);toast("한글에서 Ctrl+N, M으로 수식 편집기를 열고 그 안에 붙여 넣으세요.")});
       okN++;F.appendChild(d);return;
     }
     let o=null,norm=f.eq;try{const p=parse(f.eq);o=build(p);norm=toInput(p);okN++}catch(e){}
     d.className="fitem"+(o?"":" bad");
-    d.innerHTML=`<div class="fbody" title="위 칸으로 불러오기"><span class="n"></span><span class="pv"></span>${o?"":'<span class="why">화학식으로 읽지 못했어요. 눌러서 고쳐 주세요.</span>'}</div><button>${o?"＋ 모아두기":"고쳐 쓰기"}</button>`;
+    d.innerHTML=`<div class="fbody" title="위 칸으로 불러오기"><span class="n"></span><span class="pv"></span>${o?"":'<span class="why">화학식으로 읽지 못했어요. 눌러서 고쳐 주세요.</span>'}</div><div class="fbtns">${o?'<button data-k="body">본문용 복사</button><button data-k="eq">수식 편집기용</button><button data-k="save">＋ 모아두기</button>':'<button data-k="fix">고쳐 쓰기</button>'}</div>`;
     d.querySelector(".n").textContent=(photos.length>1&&f.photo?`사진 ${f.photo} · `:"")+(f.name||(o?"찾은 식":"확인이 필요한 식"));
     if(o)d.querySelector(".pv").innerHTML=o.html;else d.querySelector(".pv").textContent=f.eq;
     const load=()=>{$("eq").value=norm;render();$("eq").focus();scrollTo({top:0,behavior:"smooth"})};
     d.querySelector(".fbody").addEventListener("click",load);
-    d.querySelector("button").addEventListener("click",()=>{if(!o){load();return}
-      if(!saved.includes(norm)){saved.push(norm);store();renderList()}toast("모아둔 식에 추가했어요.")});
+    if(!o)d.querySelector('[data-k="fix"]').addEventListener("click",load);
+    else{
+      d.querySelector('[data-k="body"]').addEventListener("click",e=>copyRich(o.rich,o.uni,e.currentTarget));
+      d.querySelector('[data-k="eq"]').addEventListener("click",e=>{copyText(o.hwp,e.currentTarget);toast("한글에서 Ctrl+N, M으로 수식 편집기를 열고 그 안에 붙여 넣으세요.")});
+      d.querySelector('[data-k="save"]').addEventListener("click",()=>{if(!saved.includes(norm)){saved.push(norm);store();renderList()}toast("모아둔 식에 추가했어요.")});
+    }
     F.appendChild(d);
   });
   if(!reading)smsg(`${foundList.length}개를 찾았어요. 아래 버튼으로 한 번에 복사하거나, 식을 눌러 하나씩 확인하세요.`);
   $("foundActs").hidden=okN===0;
 }
 function foundBuilt(){return foundList.filter(f=>f.kind!=="math").map(f=>{try{return build(parse(f.eq))}catch(e){return null}}).filter(Boolean)}
-$("copyAllRich").addEventListener("click",e=>{const os=foundBuilt();if(!os.length)return;copyRich(os.map(o=>o.rich).join("<br>"),os.map(o=>o.uni).join("\n"),e.currentTarget)});
+function foundBodies(){return foundList.map(f=>{if(f.kind==="math"){try{return{html:hwpToHtml(f.eq,true),text:mathPlain(f.eq)}}catch(x){return null}}try{const o=build(parse(f.eq));return{html:o.rich,text:o.uni}}catch(x){return null}}).filter(Boolean)}
+$("copyAllRich").addEventListener("click",e=>{const bs=foundBodies();if(!bs.length)return;copyRich(bs.map(b=>b.html).join("<br>"),bs.map(b=>b.text).join("\n"),e.currentTarget)});
 $("copyAllHwp").addEventListener("click",e=>{const lines=foundList.map(f=>{if(f.kind==="math")return "it "+f.eq;try{return build(parse(f.eq)).hwp}catch(x){return null}}).filter(Boolean);if(!lines.length)return;copyText(lines.join(" # "),e.currentTarget)});
 $("addAllFound").addEventListener("click",()=>{let n=0;
   foundList.forEach(f=>{if(f.kind==='math')return;try{const s=toInput(parse(f.eq));if(!saved.includes(s)){saved.push(s);n++}}catch(e){}});
