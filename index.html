@@ -144,6 +144,9 @@ textarea#aiAnswer:focus,#gkey:focus{outline:none;border-color:var(--accent)}
 .fitem .fbody{flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer}
 .fitem .n{font-size:12.5px;color:var(--muted)}
 .fitem.bad{border-color:var(--warn)}
+.eqhelp{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--tile);border:1.5px solid var(--accent);font-size:13.5px}
+.eqhelp ol{margin:6px 0 8px;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.eqhelp button{padding:3px 10px;font-size:12px}
 .fbtns{display:flex;flex-direction:column;gap:4px;flex:none}
 .fbtns button{padding:4px 9px;font-size:12px;white-space:nowrap}
 .fitem .why{font-size:12px;color:var(--warn);margin-top:2px}
@@ -421,9 +424,16 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
     <p class="scanmsg" id="scanmsg" aria-live="polite"></p>
     <div class="found" id="found"></div>
     <div class="inrow" id="foundActs" style="margin-top:10px" hidden>
-      <button class="primary" id="copyAllRich">📄 모두 한글 본문용으로 복사</button>
-      <button id="copyAllHwp">∑ 모두 수식 편집기용 (Ctrl+N,M 창에)</button>
+      <button id="copyAllRich">📄 화학식 모두 본문용으로 복사</button>
+      <button class="primary" id="copyAllHwp">∑ 모두 수식으로 복사</button>
       <button id="addAllFound">＋ 모아두기에 저장</button>
+    </div>
+    <div class="eqhelp" id="eqHelp" hidden>
+      <b>수식을 한글에 넣는 법</b>
+      <ol><li>한글 문서에서 <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>M</kbd>을 눌러 수식 편집기를 열어요.</li>
+      <li>아래쪽 글 입력 칸을 누르고 <kbd>Ctrl</kbd>+<kbd>V</kbd> 해요. (본문에 바로 붙이면 코드 글자가 나와요)</li>
+      <li>위에 책과 같은 모양이 보이면 <b>넣기</b>(<kbd>Shift</kbd>+<kbd>Esc</kbd>)를 눌러요.</li></ol>
+      <button id="eqHelpClose">닫기</button>
     </div>
     <p class="hint"><b>본문용</b>은 한글 문서에 바로 <kbd>Ctrl</kbd>+<kbd>V</kbd>, <b>수식 편집기용</b>은 <kbd>Ctrl</kbd>+<kbd>N</kbd>,<kbd>M</kbd>으로 연 수식 창 안에 붙여 넣으세요. 식을 누르면 위 칸에서 고칠 수 있어요.</p>
 
@@ -836,7 +846,7 @@ function toInput(eq){
 const chg=c=>c?(Math.abs(c)>1?Math.abs(c):"")+(c>0?"+":"-"):"";
 function coefOut(s,mode){
   if(!s.coefStr||s.coefStr==="1")return"";
-  if(s.coefStr.includes("/")){const[a,b]=s.coefStr.split("/");return mode==="hwp"?`{${a}} over {${b}} `:mode==="html"?`<sup>${a}</sup>⁄<sub>${b}</sub>`:`${a}/${b}`}
+  if(s.coefStr.includes("/")){const[a,b]=s.coefStr.split("/");const V={"1/2":"½","1/3":"⅓","2/3":"⅔","1/4":"¼","3/4":"¾"}[a+"/"+b];return mode==="hwp"?`{${a}} over {${b}} `:mode==="html"?(V||`<sup>${a}</sup>⁄<sub>${b}</sub>`):(V||`${a}/${b}`)}
   return s.coefStr;
 }
 function termHTML(s){return coefOut(s,"html")+s.parts.map(p=>p.multStr+esc(p.f).replace(/(\d+)/g,"<sub>$1</sub>")).join("·")+(s.charge?`<sup>${chg(s.charge).replace("-","−")}</sup>`:"")+(s.state?`(${s.state})`:"")}
@@ -968,17 +978,20 @@ const PROMPT_LINES=`첨부한 사진은 대학 전공 교재(일반화학·생�
 - 이름은 사진에 나온 반응 이름이나 물질 이름, 없으면 짧은 한국어 설명
 - 구조식이나 골격 구조로만 그려진 물질은 분자식으로 바꿔서 쓰기
 수학 식 쓰는 규칙 (한글 수식 편집기 문법):
-- 분수는 {위} over {아래}, 아래 첨자는 _{ }, 위 첨자는 ^{ }, 대괄호 농도는 [ rm H_{2} O_{2} ], 곱하기 점은 cdot, 그리스 문자는 alpha, DELTA처럼
+- 분수는 {위} over {아래}, 아래 첨자는 _{ } (v_{c}처럼 글자 첨자도 꼭 표시), 위 첨자는 ^{ }, 대괄호 농도는 [ rm H_{2} O_{2} ], 곱하기 점은 cdot, 그리스 문자는 alpha, DELTA처럼
+- 책에 쓰인 기호와 글자를 그대로 옮기기 (v_{c}를 v_{b}로 바꾸지 않기)
 예시:
 물의 생성 | 2H2 + O2 -> 2H2O
 과산화 수소 분해 | H2O2 -> H2O + 1/2O2
 황산 | H2SO4
-수식 | 반응 속도식 | v = - {d [ rm H_{2} O_{2} ]} over {dt} = k [ rm H_{2} O_{2} ]^{m} [ rm KI ]^{n}`;
+수식 | 반응 속도식 | v = - {d [ rm H_{2} O_{2} ]} over {dt} = k [ rm H_{2} O_{2} ]^{m} [ rm KI ]^{n}
+수식 | 속도 비 | log {v_{c}} over {v_{a}} = n log 2 = 0.3n`;
 
 /* ---------- 수학 식 → 한글 수식 편집기 코드 ---------- */
 function toHwpMath(src){
   let s=String(src).trim();
   if(/\bover\b|_\{|\^\{/.test(s))return s; // 이미 한글 수식 문법
+  s=s.replace(/([A-Za-z0-9])(log|ln)(?![a-z])/g,"$1 $2 ").replace(/\b(log|ln)(?=[0-9A-Za-z(\[])/g,"$1 ");
   s=s.replace(/·|∙|\*/g," cdot ").replace(/×/g," times ").replace(/≈/g," APPROX ").replace(/≠/g," != ").replace(/≤/g," <= ").replace(/≥/g," >= ")
      .replace(/Δ/g,"DELTA ").replace(/α/g,"alpha ").replace(/β/g,"beta ").replace(/γ/g,"gamma ").replace(/λ/g,"lambda ").replace(/μ/g,"mu ").replace(/ε/g,"epsilon ").replace(/π/g,"pi ").replace(/θ/g,"theta ").replace(/°/g,"^circ ").replace(/\bEa\b/g,"E_a").replace(/\](\d+|t)(?![A-Za-z0-9])/g,"]_$1").replace(/−/g,"-").replace(/→/g," -> ");
   const chem=t=>t.replace(/(\d+)/g,"_{$1} ").replace(/\s+/g," ").trim();
@@ -1264,11 +1277,10 @@ function renderFound(){
     if(f.kind==="math"){
       d.className="fitem math";
       let pv="";try{pv=hwpToHtml(f.eq)}catch(e){}
-      d.innerHTML=`<div class="fbody"><span class="n"></span><span class="pv mpv render">${pv}</span><code class="mcode"></code></div><div class="fbtns"><button data-k="body">본문용 복사</button><button data-k="eq">수식 편집기용</button></div>`;
+      d.innerHTML=`<div class="fbody"><span class="n"></span><span class="pv mpv render">${pv}</span><code class="mcode"></code></div><div class="fbtns"><button class="primary" data-k="eq">수식 복사</button></div>`;
       d.querySelector(".n").textContent=(photos.length>1&&f.photo?`사진 ${f.photo} · `:"")+"수식 · "+(f.name||"수학 식");
       d.querySelector(".mcode").textContent=f.eq;
-      d.querySelector('[data-k="body"]').addEventListener("click",e=>copyRich(hwpToHtml(f.eq,true),mathPlain(f.eq),e.currentTarget));
-      d.querySelector('[data-k="eq"]').addEventListener("click",e=>{copyText(f.eq,e.currentTarget);toast("한글에서 Ctrl+N, M으로 수식 편집기를 열고 그 안에 붙여 넣으세요.")});
+      d.querySelector('[data-k="eq"]').addEventListener("click",e=>{copyText(f.eq,e.currentTarget);showEqHelp()});
       okN++;F.appendChild(d);return;
     }
     let o=null,norm=f.eq;try{const p=parse(f.eq);o=build(p);norm=toInput(p);okN++}catch(e){}
@@ -1289,10 +1301,15 @@ function renderFound(){
   if(!reading)smsg(`${foundList.length}개를 찾았어요. 아래 버튼으로 한 번에 복사하거나, 식을 눌러 하나씩 확인하세요.`);
   $("foundActs").hidden=okN===0;
 }
+function showEqHelp(){$("eqHelp").hidden=false}
+$("eqHelpClose").addEventListener("click",()=>{$("eqHelp").hidden=true});
 function foundBuilt(){return foundList.filter(f=>f.kind!=="math").map(f=>{try{return build(parse(f.eq))}catch(e){return null}}).filter(Boolean)}
-function foundBodies(){return foundList.map(f=>{if(f.kind==="math"){try{return{html:hwpToHtml(f.eq,true),text:mathPlain(f.eq)}}catch(x){return null}}try{const o=build(parse(f.eq));return{html:o.rich,text:o.uni}}catch(x){return null}}).filter(Boolean)}
-$("copyAllRich").addEventListener("click",e=>{const bs=foundBodies();if(!bs.length)return;copyRich(bs.map(b=>b.html).join("<br>"),bs.map(b=>b.text).join("\n"),e.currentTarget)});
-$("copyAllHwp").addEventListener("click",e=>{const lines=foundList.map(f=>{if(f.kind==="math")return "it "+f.eq;try{return build(parse(f.eq)).hwp}catch(x){return null}}).filter(Boolean);if(!lines.length)return;copyText(lines.join(" # "),e.currentTarget)});
+function foundBodies(){return foundList.map(f=>{if(f.kind==="math")return null;try{const o=build(parse(f.eq));return{html:o.rich,text:o.uni}}catch(x){return null}}).filter(Boolean)}
+$("copyAllRich").addEventListener("click",e=>{const bs=foundBodies();const nm=foundList.filter(f=>f.kind==="math").length;
+  if(!bs.length){toast("본문용으로 복사할 화학식이 없어요. 수식은 ‘수식 복사’를 쓰세요.");return}
+  copyRich(bs.map(b=>b.html).join("<br>"),bs.map(b=>b.text).join("\n"),e.currentTarget);
+  if(nm)setTimeout(()=>toast(`화학식만 복사했어요. 수식 ${nm}개는 ‘수식 복사’로 따로 넣어 주세요.`),1500)});
+$("copyAllHwp").addEventListener("click",e=>{showEqHelp();const lines=foundList.map(f=>{if(f.kind==="math")return "it "+f.eq;try{return build(parse(f.eq)).hwp}catch(x){return null}}).filter(Boolean);if(!lines.length)return;copyText(lines.join(" # "),e.currentTarget)});
 $("addAllFound").addEventListener("click",()=>{let n=0;
   foundList.forEach(f=>{if(f.kind==='math')return;try{const s=toInput(parse(f.eq));if(!saved.includes(s)){saved.push(s);n++}}catch(e){}});
   store();renderList();toast(n?`${n}개를 모아둔 식에 추가했어요.`:"이미 모두 모아둔 식이에요.")});

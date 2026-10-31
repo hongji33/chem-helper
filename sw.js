@@ -1,5 +1,5 @@
 // 한글 화학식 도우미 – 오프라인에서도 열리도록 앱 파일을 저장해 둬요.
-const VERSION = "chem-helper-v11";
+const VERSION = "chem-helper-v13";
 const APP = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
