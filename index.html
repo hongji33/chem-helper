@@ -1408,6 +1408,14 @@ $("bioQ").addEventListener("input",renderBio);
 /* ---------- 수식 모음 ---------- */
 const FR=(a,b)=>`<span class="fr"><span>${a}</span><span>${b}</span></span>`;
 const EQS=[
+ ["반응 속도식","반응 속도",`<i>v</i> = <i>k</i>[A]<sup><i>m</i></sup>[B]<sup><i>n</i></sup>`,"반응 속도는 반응물 농도의 거듭제곱에 비례해요. m+n이 전체 반응 차수예요.","v = k [A]^{m} [B]^{n}"],
+ ["속도의 정의","반응 속도",`<i>v</i> = −${FR("<i>d</i>[A]","<i>dt</i>")} = ${FR("<i>d</i>[P]","<i>dt</i>")}`,"반응물은 줄어들고 생성물은 늘어나는 빠르기로 속도를 나타내요.","v = - {d [A]} over {dt} = {d [P]} over {dt}"],
+ ["1차 반응 적분 속도식","반응 속도",`ln[A]<sub><i>t</i></sub> = ln[A]<sub>0</sub> − <i>kt</i>`,"ln[A]를 시간에 대해 그리면 기울기가 −k인 직선이에요.","ln [A]_{t} = ln [A]_{0} - kt"],
+ ["1차 반응 반감기","반응 속도",`<i>t</i><sub>1/2</sub> = ${FR("ln 2","<i>k</i>")} ≈ ${FR("0.693","<i>k</i>")}`,"1차 반응의 반감기는 처음 농도와 상관없어요.","t_{1/2} = {ln 2} over {k} APPROX {0.693} over {k}"],
+ ["2차 반응 적분 속도식","반응 속도",`${FR("1","[A]<sub><i>t</i></sub>")} = ${FR("1","[A]<sub>0</sub>")} + <i>kt</i>`,"1/[A]를 시간에 대해 그리면 기울기가 k인 직선이에요.","{1} over {[A]_{t}} = {1} over {[A]_{0}} + kt"],
+ ["아레니우스 식","반응 속도",`<i>k</i> = <i>A</i> e<sup>−<i>E</i><sub>a</sub>/<i>RT</i></sup>`,"온도가 높을수록, 활성화 에너지가 낮을수록 속도 상수가 커져요.","k = A e^{- E_{a} / RT}"],
+ ["평형 상수","화학 평형",`<i>K</i><sub>c</sub> = ${FR("[C]<sup><i>c</i></sup>[D]<sup><i>d</i></sup>","[A]<sup><i>a</i></sup>[B]<sup><i>b</i></sup>")}`,"aA + bB ⇌ cC + dD 반응이 평형일 때 농도의 비예요.","K_{c} = {[C]^{c} [D]^{d}} over {[A]^{a} [B]^{b}}"],
+ ["ΔG°와 평형 상수","화학 평형",`Δ<i>G</i>° = −<i>RT</i> ln <i>K</i>`,"K가 1보다 크면 ΔG°가 음수라서 정반응 쪽으로 치우쳐요.","DELTA G^{circ} = -RT ln K"],
  ["미카엘리스–멘텐 식","효소 반응",`<i>v</i><sub>0</sub> = ${FR("<i>V</i><sub>max</sub>[S]","<i>K</i><sub>m</sub> + [S]")}`,"기질 농도 [S]에 따른 효소 반응 초기 속도예요.","v_{0} = {V_{max} [S]} over {K_{m} + [S]}"],
  ["라인위버–버크 식","효소 반응",`${FR("1","<i>v</i><sub>0</sub>")} = ${FR("<i>K</i><sub>m</sub>","<i>V</i><sub>max</sub>")} · ${FR("1","[S]")} + ${FR("1","<i>V</i><sub>max</sub>")}`,"미카엘리스–멘텐 식의 역수 그래프로, Km과 Vmax를 구할 때 써요.","{1} over {v_{0}} = {K_{m}} over {V_{max}} cdot {1} over {[S]} + {1} over {V_{max}}"],
  ["헨더슨–하셀바흐 식","완충 용액",`pH = p<i>K</i><sub>a</sub> + log ${FR("[A<sup>−</sup>]","[HA]")}`,"완충 용액의 pH를 산과 짝염기의 비로 구해요.","rm pH = p it K_{a} + log {[ rm A^{-} ]} over {[ rm HA ]}"],
