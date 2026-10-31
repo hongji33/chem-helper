@@ -1,0 +1,1341 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2648D8">
+<meta name="description" content="화학식·반응식을 한글(HWP)에 붙여 넣고, 분자량·용액 계산, DNA·단백질 서열 분석을 하는 학습 도구">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="화학식 도우미">
+<title>한글 화학식 도우미</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif:wght@500;600&display=swap">
+<style>
+/* Layout: one working column like a lab worksheet — input on top, live preview, three copy rows, then textbook reactions and saved list */
+:root{
+  --paper:#F3F6FB; --card:#FFFFFF; --ink:#14213D; --muted:#5B6680; --line:#D8DFEC;
+  --accent:#2648D8; --accent-ink:#FFFFFF; --tile:#E7EDFF; --ok:#16815A; --ok-bg:#E3F5EC; --warn:#B84309; --warn-bg:#FDEEE4;
+  --f-display:"Do Hyeon","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --f-formula:"Noto Serif","Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E1320; --card:#161D2E; --ink:#E6EBF5; --muted:#9AA6BF; --line:#2A3450;
+  --accent:#7D9BFF; --accent-ink:#0E1320; --tile:#1D2747; --ok:#4BD99A; --ok-bg:#12352A; --warn:#FF9F5A; --warn-bg:#3A2316; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1320; --card:#161D2E; --ink:#E6EBF5; --muted:#9AA6BF; --line:#2A3450;
+  --accent:#7D9BFF; --accent-ink:#0E1320; --tile:#1D2747; --ok:#4BD99A; --ok-bg:#12352A; --warn:#FF9F5A; --warn-bg:#3A2316; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.tiles{display:flex;gap:6px}
+.el{width:46px;height:52px;border:1.5px solid var(--accent);border-radius:6px;background:var(--tile);display:flex;flex-direction:column;justify-content:space-between;padding:3px 6px;color:var(--accent)}
+.el small{font-family:var(--f-mono);font-size:10px;line-height:1}
+.el b{font-family:var(--f-formula);font-size:22px;line-height:1;text-align:center;font-weight:600}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,38px);margin:0;line-height:1.1;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0;font-size:14px}
+h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 10px;text-wrap:balance}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+label.lbl{display:block;font-weight:700;margin-bottom:8px}
+.inrow{display:flex;gap:8px;flex-wrap:wrap}
+#eq{flex:1 1 320px;min-width:0;font-family:var(--f-mono);font-size:18px;padding:12px 14px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
+#eq:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+button{font-family:var(--f-body);font-size:14px;cursor:pointer;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;font-weight:500;transition:transform .08s,background .15s,border-color .15s}
+button:hover{border-color:var(--accent)}
+button:active{transform:translateY(1px)}
+button:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:1px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+button.done{background:var(--ok);border-color:var(--ok);color:var(--card)}
+.keys{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.keys button{font-family:var(--f-mono);padding:5px 10px;font-size:13px;background:var(--tile);border-color:transparent;color:var(--accent)}
+.hint{color:var(--muted);font-size:13px;margin:10px 0 0}
+.hint code{font-family:var(--f-mono);background:var(--tile);padding:1px 5px;border-radius:4px;color:var(--ink)}
+.preview{margin-top:18px;padding:22px 16px;border-radius:10px;background:var(--paper);text-align:center;font-family:var(--f-formula);font-size:clamp(22px,4.6vw,34px);min-height:84px;display:flex;align-items:center;justify-content:center;overflow-x:auto;white-space:nowrap}
+.preview sub,.preview sup,.pv sub,.pv sup{font-size:.62em;line-height:0}
+.preview .arr,.pv .arr{margin:0 .35em}
+.preview .pl,.pv .pl{margin:0 .25em}
+.preview.err{font-family:var(--f-body);font-size:15px;color:var(--warn);white-space:normal}
+.status{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:14px}
+.pill{font-weight:700;font-size:13px;padding:4px 10px;border-radius:999px}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.no{background:var(--warn-bg);color:var(--warn)}
+.atoms{display:flex;flex-wrap:wrap;gap:6px}
+.atom{font-family:var(--f-mono);font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-variant-numeric:tabular-nums}
+.atom b{font-family:var(--f-formula);font-size:14px;margin-right:4px}
+.atom.bad{border-color:var(--warn);color:var(--warn)}
+.outs{display:flex;flex-direction:column;gap:10px}
+.out{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.out .t{font-weight:700;font-size:14px}
+.out .d{color:var(--muted);font-size:12.5px;grid-column:1/2}
+.out .v{grid-column:1/3;font-family:var(--f-mono);font-size:15px;background:var(--paper);padding:8px 12px;border-radius:6px;overflow-x:auto;white-space:pre;min-width:0;user-select:all}
+.out .v.f{font-family:var(--f-formula);font-size:18px}
+.out button{grid-row:1/3;grid-column:2}
+.out.main{border:1.5px solid var(--accent)}
+.presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.preset{text-align:left;display:flex;flex-direction:column;gap:2px;padding:10px 12px;min-width:0}
+.preset .n{font-size:13px;color:var(--muted);font-weight:500}
+.pv{font-family:var(--f-formula);font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:5px 10px;font-size:13px;border-radius:999px}
+.chip i{font-style:normal;font-family:var(--f-formula);color:var(--accent);margin-left:6px}
+details summary{cursor:pointer;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
+details summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+details[open] summary::before{transform:rotate(90deg)}
+details .chips{margin-top:12px}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.item .pv{flex:1 1 200px;min-width:0;font-size:18px}
+.item .btns{display:flex;gap:6px;flex-wrap:wrap}
+.item button{padding:5px 10px;font-size:12.5px}
+.empty{color:var(--muted);font-size:14px;padding:14px;border:1.5px dashed var(--line);border-radius:10px;text-align:center}
+.listhead{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.listhead h2{margin:0}
+ol.how{margin:0;padding-left:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:s}
+ol.how li{counter-increment:s;background:var(--paper);border-radius:10px;padding:12px 14px;font-size:14px}
+ol.how li::before{content:counter(s);display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:13px;margin-right:8px}
+kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--card)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.photo .sub{margin-bottom:12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tab{display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:8px 14px;text-align:left}
+.tab small{font-size:11.5px;color:var(--muted);font-weight:400}
+.tab.on{border-color:var(--accent);background:var(--tile);color:var(--accent);font-weight:700}
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;counter-reset:st}
+.steps li{counter-increment:st;display:flex;gap:10px;align-items:flex-start}
+.steps li::before{content:counter(st);flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:13px;margin-top:1px}
+.steps li>div{flex:1;min-width:0}
+.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.links a{color:var(--accent);font-weight:700;text-decoration:none;border:1.5px solid var(--line);border-radius:8px;padding:5px 12px;font-size:13.5px}
+.links a:hover{border-color:var(--accent)}
+.hint a{color:var(--accent)}
+textarea#aiAnswer,#gkey,#gmodel{font-family:var(--f-mono);font-size:14px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);width:100%;margin-top:6px;resize:vertical}
+#gkey{flex:1 1 260px;min-width:0;width:auto;margin:0}
+#gmodel{width:auto;margin:0;padding:7px 10px;font-size:13px}
+textarea#aiAnswer:focus,#gkey:focus{outline:none;border-color:var(--accent)}
+.keyrow{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+
+.drop{border:2px dashed var(--line);border-radius:10px;padding:18px;display:flex;align-items:center;gap:16px;cursor:pointer;background:var(--paper);transition:border-color .15s,background .15s;flex-wrap:wrap}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--tile)}
+.drop:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+.drop img{max-height:160px;max-width:min(100%,260px);border-radius:6px;border:1px solid var(--line);object-fit:contain}
+.dropmsg{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 200px}
+.dropmsg b{color:var(--accent)}
+.dropmsg span{color:var(--muted);font-size:13px}
+.scanmsg{margin:10px 0 0;font-size:14px;color:var(--muted)}
+.scanmsg.bad{color:var(--warn)}
+.found{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-top:10px}
+.found:empty{display:none}
+.fitem{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.fitem .fbody{flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer}
+.fitem .n{font-size:12.5px;color:var(--muted)}
+.fitem.bad{border-color:var(--warn)}
+.fitem.bad .pv{font-family:var(--f-mono);font-size:13px;color:var(--warn)}
+.fitem button{padding:4px 8px;font-size:12px}
+.dots::after{content:"";animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+
+.nav{display:flex;gap:4px;overflow-x:auto;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav a{flex:none;text-decoration:none;color:var(--muted);font-weight:700;font-size:14px;padding:9px 14px;border-radius:8px;white-space:nowrap}
+.nav a:hover{color:var(--ink);background:var(--paper)}
+.nav a[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
+.nav a:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+.tabpane{display:flex;flex-direction:column;gap:22px}
+.tabpane[hidden]{display:none!important}
+.massline{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+.massline .lab{font-size:12.5px;color:var(--muted);font-weight:700;margin-right:2px}
+.mchip{font-family:var(--f-formula);font-size:14px;padding:3px 10px;border-radius:999px;background:var(--tile);border:none;color:var(--ink)}
+.mchip b{font-family:var(--f-mono);font-size:12.5px;font-weight:500;color:var(--accent);margin-left:6px;font-variant-numeric:tabular-nums}
+.fin{flex:1 1 260px;min-width:0;font-family:var(--f-mono);font-size:17px;padding:11px 14px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
+.fin:focus,.field input:focus,.seqbox:focus{outline:none;border-color:var(--accent)}
+.fsel{font-family:var(--f-body);font-size:14px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.mmres{margin-top:16px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.mmres .big{font-family:var(--f-mono);font-size:clamp(28px,6vw,40px);font-weight:500;font-variant-numeric:tabular-nums;color:var(--accent)}
+.mmres .f{font-family:var(--f-formula);font-size:22px}
+.mmres .err{color:var(--warn)}
+.comp{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.crow{display:grid;grid-template-columns:44px 1fr 150px;gap:10px;align-items:center;font-size:13px;font-variant-numeric:tabular-nums}
+.crow .s{font-family:var(--f-formula);font-size:16px;font-weight:600}
+.crow .bar{height:10px;background:var(--paper);border-radius:99px;overflow:hidden}
+.crow .bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.crow .v{font-family:var(--f-mono);color:var(--muted);text-align:right}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px}
+.field{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;margin-bottom:8px}
+.field label{font-size:13.5px;font-weight:500;color:var(--muted)}
+.field input,.field select{font-family:var(--f-mono);font-size:15px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);width:100%;min-width:0}
+.field .fsel{font-family:var(--f-body)}
+.unit{display:flex;gap:6px;min-width:0}
+.unit input{flex:1}
+.unit select{width:auto;flex:none;font-family:var(--f-body)}
+.unit span{flex:none;align-self:center;font-family:var(--f-mono);font-size:13px;color:var(--muted);min-width:44px}
+.answer{margin-top:10px;padding:12px 14px;background:var(--tile);border-radius:8px;font-size:14.5px;line-height:1.55}
+.answer b{font-family:var(--f-mono);font-size:18px;color:var(--accent);font-variant-numeric:tabular-nums}
+.answer.err{background:var(--warn-bg);color:var(--warn)}
+.seqbox{width:100%;font-family:var(--f-mono);font-size:13.5px;line-height:1.5;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);resize:vertical;word-break:break-all}
+.chipsum{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.stat{display:flex;flex-direction:column;padding:8px 12px;border:1px solid var(--line);border-radius:8px;min-width:96px}
+.stat span{font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:.02em}
+.stat b{font-family:var(--f-mono);font-size:17px;font-weight:500;font-variant-numeric:tabular-nums}
+.stat.kind{border-color:var(--accent)}
+.stat.kind b{font-family:var(--f-body);color:var(--accent);font-weight:700}
+.compbars{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 16px;margin-top:12px}
+.compbars .crow{grid-template-columns:28px 1fr 72px}
+.seqv{grid-column:1/3;font-family:var(--f-mono);font-size:13px;background:var(--paper);padding:8px 12px;border-radius:6px;word-break:break-all;white-space:pre-wrap;max-height:180px;overflow:auto;min-width:0}
+.seqv .st{color:var(--warn);font-weight:700}
+.seqv .mt{color:var(--ok);font-weight:700}
+.tablewrap{overflow-x:auto;margin-top:12px}
+table.codon{border-collapse:collapse;font-family:var(--f-mono);font-size:12.5px;min-width:560px}
+table.codon th,table.codon td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+table.codon th{background:var(--tile);color:var(--accent);text-align:center}
+table.codon td div{white-space:nowrap}
+table.codon .st{color:var(--warn);font-weight:700}
+table.codon .mt{color:var(--ok);font-weight:700}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.filters button{padding:5px 12px;font-size:13px;border-radius:999px}
+.filters button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.biogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:10px}
+.bio{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.bio .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.bio .ko{font-weight:700;font-size:15px}
+.bio .en{font-size:12.5px;color:var(--muted)}
+.bio .code{font-family:var(--f-mono);font-size:12px;background:var(--tile);color:var(--accent);padding:2px 7px;border-radius:5px;white-space:nowrap}
+.bio .fm{font-family:var(--f-formula);font-size:18px;margin-top:2px;overflow-wrap:anywhere}
+.bio .mw{font-family:var(--f-mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bio .tag{font-size:11.5px;font-weight:700;padding:1px 8px;border-radius:999px;align-self:flex-start;border:1px solid var(--line);color:var(--muted)}
+.bio .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.bio .acts button{padding:4px 9px;font-size:12px}
+.eqgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:12px}
+.eqc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.eqc .nm{font-weight:700}
+.eqc .nm small{font-weight:400;color:var(--muted);margin-left:6px}
+.eqc .render{font-family:var(--f-formula);font-size:20px;text-align:center;padding:14px 8px;background:var(--paper);border-radius:8px;overflow-x:auto;white-space:nowrap}
+.eqc .desc{font-size:13px;color:var(--muted);margin:0}
+.eqc code{font-family:var(--f-mono);font-size:12.5px;background:var(--paper);padding:6px 10px;border-radius:6px;overflow-x:auto;white-space:pre;display:block}
+.eqc .acts{display:flex;gap:6px}
+.render sub,.render sup{font-size:.62em;line-height:0}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .15em}
+.fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 .2em}
+.fr>span{line-height:1.25;padding:0 .2em}
+@media (max-width:520px){.field{grid-template-columns:1fr;gap:4px}.crow{grid-template-columns:36px 1fr 110px}}
+
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;flex-wrap:wrap;gap:5px;overflow-x:visible;padding:6px 0;background:var(--paper);border:0;border-radius:0;margin-bottom:-8px}
+.nav a,.nav .install{flex:none;font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--muted);text-decoration:none;white-space:nowrap;line-height:1.4}
+.nav a:hover{color:var(--ink);border-color:var(--accent);background:var(--card)}
+.nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.nav .install{margin-left:auto;border-color:var(--accent);color:var(--accent)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:21;background:var(--paper)}
+header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
+.src{font-size:12px;color:var(--muted);font-weight:500}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;cursor:pointer}
+.chk input{accent-color:var(--accent);width:16px;height:16px}
+.newslist{display:flex;flex-direction:column;gap:10px}
+.newslist:empty{display:none}
+.news{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.news .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.badge{font-family:var(--f-body);font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px}
+.badge.pre{background:var(--warn-bg);color:var(--warn)}
+.badge.oa{background:var(--ok-bg);color:var(--ok)}
+.news .ttl{font-weight:700;color:var(--ink);text-decoration:none;line-height:1.45;overflow-wrap:anywhere}
+.news .ttl:hover{color:var(--accent);text-decoration:underline}
+.news .ko{margin:0;font-size:14px;color:var(--accent);font-weight:500}
+.news .by,.news .jr{margin:0;font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.news .jr a{color:var(--accent)}
+.jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:8px;margin-top:6px}
+.job{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}
+.job summary span{display:flex;flex-direction:column}
+.job summary small{color:var(--muted);font-weight:400;font-size:12px}
+.job p{font-size:13.5px;margin:8px 0}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tags span{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--tile);color:var(--accent);font-weight:500}
+.skillbar{height:8px;background:var(--paper);border-radius:99px;overflow:hidden;margin:4px 0 12px}
+.skillbar i{display:block;height:100%;width:0;background:var(--ok);border-radius:99px;transition:width .3s}
+.skills{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:6px 14px}
+.skill{padding:4px 0}
+.certs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:8px}
+.cert{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.cert p{margin:0;font-size:13px;color:var(--muted)}
+.cert a{font-size:13px;color:var(--accent);font-weight:700;text-decoration:none}
+.sites{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:8px}
+.site{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink)}
+.site:hover{border-color:var(--accent)}
+.site b{color:var(--accent)}
+.site span{font-size:12.5px;color:var(--muted)}
+
+@media (max-width:520px){.out{grid-template-columns:1fr}.out button{grid-row:auto;grid-column:1;justify-self:start}.out .v{grid-column:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <nav class="nav" aria-label="메뉴">
+    <a href="#chem" aria-current="page">⚗︎ 화학식</a>
+    <a href="#calc">⚖︎ 분자량·용액</a>
+    <a href="#seq">🧬 서열 도구</a>
+    <a href="#bio">📖 생체분자</a>
+    <a href="#eqs">∑ 수식 모음</a>
+    <a href="#news">📰 진로·소식</a>
+    <button id="installBtn" class="install" hidden>⬇ 앱 설치</button>
+  </nav>
+  <header>
+    <div class="tiles" aria-hidden="true">
+      <div class="el"><small>1</small><b>H</b></div>
+      <div class="el"><small>8</small><b>O</b></div>
+      <div class="el"><small>6</small><b>C</b></div>
+    </div>
+    <div>
+      <h1>한글 화학식 도우미</h1>
+      <p class="sub">화학식을 한글(HWP)에 바로 붙여 넣고, 분자량·용액 계산과 DNA·단백질 서열 분석까지 할 수 있어요.</p>
+    </div>
+  </header>
+
+  <div class="tabpane" id="pane-chem">
+
+  <section class="card">
+    <label class="lbl" for="eq">화학 반응식 또는 화학식</label>
+    <div class="inrow">
+      <input id="eq" type="text" autocomplete="off" spellcheck="false" value="포도당 + 산소 -> 이산화 탄소 + 물">
+      <button class="primary" id="bal">⚖ 계수 맞추기</button>
+      <button id="save">＋ 모아두기</button>
+    </div>
+    <div class="keys" id="keys"></div>
+    <p class="hint">숫자는 그냥 쓰면 아래 첨자가 돼요: <code>H2SO4</code> · 화살표는 <code>-&gt;</code> · 이온은 <code>Na+</code> <code>SO4^2-</code> · 물질 이름을 한글로 써도 돼요: <code>포도당 -&gt; 에탄올 + 이산화 탄소</code></p>
+    <div class="preview" id="preview" aria-live="polite"></div>
+    <div class="status" id="status"></div>
+    <div class="massline" id="massline"></div>
+  </section>
+
+  <section class="card photo" id="photoSec">
+    <h2>교재 사진으로 가져오기</h2>
+    <p class="sub">전공 교재나 강의 자료 사진 속 화학식을 AI가 읽어서 정리해 줘요. 두 가지 방법 중 편한 것을 고르세요.</p>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabA" aria-selected="true" class="tab on">① AI 채팅으로 읽기 <small>누구나 · 무료</small></button>
+      <button role="tab" id="tabB" aria-selected="false" class="tab">② Gemini 키로 바로 읽기 <small>키 있는 사람</small></button>
+    </div>
+
+    <div id="paneA" class="pane">
+      <ol class="steps">
+        <li><div><b>AI에게 보낼 문장을 복사해요.</b>
+          <div class="inrow" style="margin-top:6px"><button class="primary" id="copyPrompt">문장 복사</button></div></div></li>
+        <li><div><b>무료 AI 채팅에 교재 사진을 올리고, 복사한 문장을 붙여 넣어 보내요.</b>
+          <div class="links">
+            <a href="https://chatgpt.com" target="_blank" rel="noopener">ChatGPT</a>
+            <a href="https://gemini.google.com" target="_blank" rel="noopener">Gemini</a>
+            <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a>
+          </div></div></li>
+        <li><div><b>AI의 답을 통째로 복사해서 아래 칸에 붙여 넣어요.</b>
+          <textarea id="aiAnswer" rows="5" placeholder="물의 생성 | 2H2 + O2 -> 2H2O&#10;메테인의 연소 | CH4 + 2O2 -> CO2 + 2H2O"></textarea>
+          <div class="inrow" style="margin-top:8px"><button class="primary" id="parseAnswer">정리하기</button></div></div></li>
+      </ol>
+    </div>
+
+    <div id="paneB" class="pane" hidden>
+      <div class="keyrow">
+        <label for="gkey" class="lbl" style="margin:0">Gemini API 키</label>
+        <div class="inrow">
+          <input id="gkey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza로 시작하는 키를 붙여 넣으세요">
+          <button id="saveKey">이 컴퓨터에 저장</button>
+          <button id="delKey">키 지우기</button>
+        </div>
+        <p class="hint" style="margin-top:6px">키는 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>에서 무료로 받을 수 있어요(만 18세 이상). 키는 이 브라우저에만 저장되고 파일이나 다른 사람에게는 가지 않아요.</p>
+      </div>
+      <div class="drop" id="drop">
+        <input type="file" id="photo" accept="image/*" capture="environment" hidden>
+        <img id="thumb" alt="올린 사진" hidden>
+        <div class="dropmsg" id="dropmsg">
+          <b>📷 사진 찍기 · 사진 고르기</b>
+          <span>여기를 누르거나, 사진을 끌어다 놓거나, Ctrl+V로 붙여 넣으세요.</span>
+        </div>
+      </div>
+      <div class="inrow" style="margin-top:12px;align-items:center">
+        <button class="primary" id="scan" disabled>🔍 화학식 찾기</button>
+        <button id="stopScan" hidden>멈추기</button>
+        <label for="gmodel" class="hint" style="margin:0">모델</label>
+        <select id="gmodel">
+          <option value="auto">자동 (안 되면 다음 모델로)</option>
+          <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+          <option value="gemini-flash-latest">gemini-flash-latest</option>
+          <option value="gemini-flash-lite-latest">gemini-flash-lite-latest</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="scanmsg" id="scanmsg" aria-live="polite"></p>
+    <div class="found" id="found"></div>
+    <div class="inrow" style="margin-top:8px"><button id="addAllFound" hidden>찾은 식 모두 모아두기</button></div>
+    <p class="hint">사진 속 글자를 읽는 거라 가끔 틀릴 수 있어요. 찾은 식을 눌러 위 칸에서 확인한 뒤 써 주세요.</p>
+  </section>
+
+  <section>
+    <h2>한글에 붙여넣기</h2>
+    <div class="outs">
+      <div class="out main">
+        <span class="t">① 본문에 바로 붙여넣기 <span style="color:var(--accent)">(추천)</span></span>
+        <span class="d">아래 첨자 서식이 그대로 유지돼요. 글꼴은 문서 글꼴을 따라가요.</span>
+        <button data-copy="rich">복사</button>
+        <div class="v f" id="o-rich"></div>
+      </div>
+      <div class="out">
+        <span class="t">② 수식 편집기용 (<kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>M</kbd>)</span>
+        <span class="d">한글 수식 편집기 입력 칸에 붙여 넣으면 깔끔한 수식 개체가 돼요.</span>
+        <button data-copy="hwp">복사</button>
+        <div class="v" id="o-hwp"></div>
+      </div>
+      <div class="out">
+        <span class="t">③ 특수문자 글자</span>
+        <span class="d">₂ ³⁺ 같은 특수문자로 된 글자예요. 표나 메신저 어디든 붙여 넣을 수 있어요.</span>
+        <button data-copy="uni">복사</button>
+        <div class="v f" id="o-uni"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <ol class="how">
+      <li>한글에서 <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>M</kbd> 을 눌러 수식 편집기를 열어요.</li>
+      <li>위의 ② 수식 편집기용을 복사해서 입력 칸에 <kbd>Ctrl</kbd>+<kbd>V</kbd> 해요.</li>
+      <li><b>넣기</b> 버튼(<kbd>Shift</kbd>+<kbd>Esc</kbd>)을 누르면 문서에 들어가요.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>전공 교재 반응식 모음</h2>
+    <p class="sub" style="margin:-4px 0 10px">일반화학 · 생화학 · 미생물학에서 자주 나오는 반응이에요. 누르면 위 칸에 들어가요.</p>
+    <div class="presets" id="presets"></div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>물질 이름 ↔ 화학식 찾기 (누르면 입력 칸에 들어가요)</summary>
+      <div class="chips" id="chips"></div>
+    </details>
+  </section>
+
+  <section>
+    <div class="listhead">
+      <h2>모아둔 식</h2>
+      <div class="inrow">
+        <button id="copyAll">본문용 전체 복사</button>
+        <button id="clearAll">모두 지우기</button>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+  </div>
+
+  <!-- ===== 분자량·용액 ===== -->
+  <div class="tabpane" id="pane-calc" hidden>
+    <section class="card">
+      <h2>몰질량 계산</h2>
+      <div class="inrow">
+        <input id="mmIn" class="fin" type="text" autocomplete="off" spellcheck="false" value="C6H12O6" aria-label="화학식">
+        <button id="mmUse" class="primary">이 값을 아래 계산에 쓰기</button>
+      </div>
+      <div class="mmres" id="mmRes"></div>
+      <div class="comp" id="mmComp"></div>
+    </section>
+
+    <div class="grid2">
+      <section class="card">
+        <h2>질량 ↔ 몰</h2>
+        <div class="field"><label for="mmMW">몰질량</label><div class="unit"><input id="mmMW" type="number" step="any" value="180.156"><span>g/mol</span></div></div>
+        <div class="field"><label for="mMass">질량</label><div class="unit"><input id="mMass" type="number" step="any" value="1"><select id="mMassU"><option value="1">g</option><option value="1e-3">mg</option><option value="1e-6">µg</option></select></div></div>
+        <div class="field"><label for="mMol">물질량</label><div class="unit"><input id="mMol" type="number" step="any"><select id="mMolU"><option value="1">mol</option><option value="1e-3" selected>mmol</option><option value="1e-6">µmol</option></select></div></div>
+        <p class="hint">질량이나 물질량 중 하나를 바꾸면 나머지가 계산돼요.</p>
+      </section>
+
+      <section class="card">
+        <h2>용액 만들기</h2>
+        <div class="field"><label for="sMW">몰질량</label><div class="unit"><input id="sMW" type="number" step="any" value="180.156"><span>g/mol</span></div></div>
+        <div class="field"><label for="sC">원하는 농도</label><div class="unit"><input id="sC" type="number" step="any" value="1"><select id="sCU"><option value="1">M</option><option value="1e-3">mM</option><option value="1e-6">µM</option><option value="1e-9">nM</option></select></div></div>
+        <div class="field"><label for="sV">만들 부피</label><div class="unit"><input id="sV" type="number" step="any" value="100"><select id="sVU"><option value="1">L</option><option value="1e-3" selected>mL</option><option value="1e-6">µL</option></select></div></div>
+        <div class="answer" id="sOut"></div>
+      </section>
+
+      <section class="card">
+        <h2>희석 C₁V₁ = C₂V₂</h2>
+        <p class="hint" style="margin:0 0 8px">구하고 싶은 칸 하나를 비워 두세요.</p>
+        <div class="field"><label>단위</label><div class="unit"><select id="dCU" aria-label="농도 단위"><option>M</option><option selected>mM</option><option>µM</option><option>%</option><option>×</option></select><select id="dVU" aria-label="부피 단위"><option>L</option><option selected>mL</option><option>µL</option></select></div></div>
+        <div class="field"><label for="dC1">원액 농도 C₁</label><input id="dC1" type="number" step="any" value="1000"></div>
+        <div class="field"><label for="dV1">원액 부피 V₁</label><input id="dV1" type="number" step="any" placeholder="비워 두면 계산"></div>
+        <div class="field"><label for="dC2">만들 농도 C₂</label><input id="dC2" type="number" step="any" value="50"></div>
+        <div class="field"><label for="dV2">만들 부피 V₂</label><input id="dV2" type="number" step="any" value="10"></div>
+        <div class="answer" id="dOut"></div>
+      </section>
+
+      <section class="card">
+        <h2>완충 용액 pH</h2>
+        <div class="field"><label for="bSel">완충제</label><select id="bSel" class="fsel">
+          <option value="8.07">Tris (pKa 8.07)</option>
+          <option value="7.21">인산 H₂PO₄⁻/HPO₄²⁻ (pKa 7.21)</option>
+          <option value="7.48" selected>HEPES (pKa 7.48)</option>
+          <option value="7.20">MOPS (pKa 7.20)</option>
+          <option value="4.76">아세트산 (pKa 4.76)</option>
+          <option value="6.10">MES (pKa 6.10)</option>
+          <option value="">직접 입력</option></select></div>
+        <div class="field"><label for="bPka">pKa</label><input id="bPka" type="number" step="any" value="7.48"></div>
+        <div class="field"><label for="bPH">원하는 pH</label><input id="bPH" type="number" step="any" value="7.4"></div>
+        <div class="field"><label for="bTot">전체 농도</label><div class="unit"><input id="bTot" type="number" step="any" value="50"><span>mM</span></div></div>
+        <div class="answer" id="bOut"></div>
+        <p class="hint">pKa는 25 °C 값이에요. Tris는 온도에 따라 pH가 많이 바뀌어요.</p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ===== 서열 도구 ===== -->
+  <div class="tabpane" id="pane-seq" hidden>
+    <section class="card">
+      <h2>서열 분석</h2>
+      <label class="lbl" for="seqIn">DNA · RNA · 단백질 서열 (FASTA 그대로 붙여 넣어도 돼요)</label>
+      <textarea id="seqIn" class="seqbox" rows="5" spellcheck="false">&gt;example_gene
+ATGGCTAGCAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCTCTTATGGTGTTCAATGCTTTTCAAGATACCCAGATCATATGAAACGGCATGACTTTTTCAAGAGTGCCATGCCCGAAGGTTATGTACAGGAAAGAACTATATTTTTCAAAGATGACGGGAACTACAAGACACGTGCTGAAGTCAAGTTTGAAGGTGATACCCTTGTTAATAGAATCGAGTTAAAAGGTATTGATTTTAAAGAAGATGGAAACATTCTTGGACACAAATTGGAATACAACTATAACTCACACAATGTATACATCATGGCAGACAAACAAAAGAATGGAATCAAAGTTAACTTCAAAATTAGACACAACATTGAAGATGGAAGCGTTCAACTAGCAGACCATTATCAACAAAATACTCCAATTGGCGATGGCCCTGTCCTTTTACCAGACAACCATTACCTGTCCACACAATCTGCCCTTTCGAAAGATCCCAACGAAAAGAGAGACCACATGGTCCTTCTTGAGTTTGTAACAGCTGCTGGGATTACACATGGCATGGATGAACTATACAAATAA</textarea>
+      <div class="inrow" style="margin-top:10px;align-items:center">
+        <select id="seqType" class="fsel" aria-label="서열 종류"><option value="auto">종류 자동 판단</option><option value="dna">DNA</option><option value="rna">RNA</option><option value="prot">단백질</option></select>
+        <button id="exDNA">DNA 예시 (GFP)</button>
+        <button id="exPrimer">프라이머 예시</button>
+        <button id="exProt">단백질 예시 (인슐린 B)</button>
+        <button id="seqClear">지우기</button>
+      </div>
+      <div class="chipsum" id="seqSum"></div>
+      <div class="compbars" id="seqComp"></div>
+    </section>
+    <div class="outs" id="seqOuts"></div>
+    <section class="card">
+      <details>
+        <summary>표준 코돈표 보기</summary>
+        <div class="tablewrap"><table class="codon" id="codonTable"></table></div>
+        <p class="hint">M(AUG)은 시작 코돈, *는 종결 코돈이에요. 위 칸은 DNA 기준(T)으로 적혀 있고, RNA에서는 T 대신 U예요.</p>
+      </details>
+    </section>
+  </div>
+
+  <!-- ===== 생체분자 사전 ===== -->
+  <div class="tabpane" id="pane-bio" hidden>
+    <section class="card">
+      <h2>생체분자 · 실험 시약 사전</h2>
+      <div class="inrow">
+        <input id="bioQ" class="fin" type="search" placeholder="이름, 영어, 약어로 찾기 (예: 류신, Leu, L, Tris)" aria-label="검색">
+      </div>
+      <div class="filters" id="bioF"></div>
+    </section>
+    <div class="biogrid" id="bioList"></div>
+  </div>
+
+  <!-- ===== 수식 모음 ===== -->
+  <div class="tabpane" id="pane-eqs" hidden>
+    <section class="card">
+      <h2>생명과학 · 생명정보 수식 모음</h2>
+      <p class="sub">보고서에 자주 쓰는 공식이에요. <b>수식 편집기용 복사</b>를 눌러 한글에서 <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>M</kbd> 칸에 붙여 넣으세요.</p>
+    </section>
+    <div class="eqgrid" id="eqList"></div>
+  </div>
+  <!-- ===== 진로·소식 ===== -->
+  <div class="tabpane" id="pane-news" hidden>
+    <section class="card">
+      <div class="listhead" style="margin-bottom:6px">
+        <h2>최신 연구 소식</h2>
+        <span class="src">출처: Europe PMC · PubMed</span>
+      </div>
+      <p class="sub">전 세계 생명과학 논문 데이터베이스에서 최근 30일 동안 나온 논문을 자동으로 불러와요.</p>
+      <div class="filters" id="newsTopics"></div>
+      <div class="inrow" style="margin-top:10px;align-items:center">
+        <input id="newsQ" class="fin" type="search" placeholder="직접 검색 (영어, 예: CRISPR base editing)" aria-label="논문 검색">
+        <button class="primary" id="newsGo">불러오기</button>
+      </div>
+      <div class="inrow" style="margin-top:8px;align-items:center;gap:14px">
+        <label class="chk"><input type="checkbox" id="newsPre" checked> 프리프린트(심사 전 논문) 포함</label>
+        <label class="chk"><input type="checkbox" id="newsOA"> 무료로 읽을 수 있는 것만</label>
+        <button id="newsKo" hidden>제목 한국어로 보기</button>
+      </div>
+      <p class="scanmsg" id="newsMsg" aria-live="polite"></p>
+    </section>
+    <div class="newslist" id="newsList"></div>
+
+    <section class="card">
+      <h2>진로 길잡이</h2>
+      <p class="sub">생명정보공학을 전공하면 이런 일을 할 수 있어요. 카드를 눌러 필요한 역량을 확인하세요.</p>
+      <div class="jobs" id="jobs"></div>
+    </section>
+
+    <section class="card">
+      <div class="listhead"><h2>나의 역량 체크</h2><span class="src" id="skillPct"></span></div>
+      <div class="skillbar"><i id="skillBar"></i></div>
+      <div class="skills" id="skills"></div>
+      <p class="hint">체크한 내용은 이 기기에만 저장돼요.</p>
+    </section>
+
+    <section class="card">
+      <h2>도움이 되는 자격증</h2>
+      <div class="certs" id="certs"></div>
+      <p class="hint">시험 일정과 응시 자격은 각 기관 누리집에서 꼭 확인하세요.</p>
+    </section>
+
+    <section class="card">
+      <h2>믿을 수 있는 사이트</h2>
+      <div class="sites" id="sites"></div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const ELEM=new Set("H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split(" "));
+const NAMES=[
+ ["수소","H2"],["산소","O2"],["질소","N2"],["물","H2O"],["이산화 탄소","CO2"],["일산화 탄소","CO"],["탄소","C"],["메테인","CH4"],["메탄","CH4"],
+ ["암모니아","NH3"],["염화 수소","HCl"],["염산","HCl"],["황산","H2SO4"],["질산","HNO3"],["탄산","H2CO3"],["과산화 수소","H2O2"],
+ ["염화 나트륨","NaCl"],["수산화 나트륨","NaOH"],["탄산 나트륨","Na2CO3"],["탄산수소 나트륨","NaHCO3"],["질산 나트륨","NaNO3"],["나트륨","Na"],
+ ["탄산 칼슘","CaCO3"],["염화 칼슘","CaCl2"],["수산화 칼슘","Ca(OH)2"],["산화 칼슘","CaO"],["칼슘","Ca"],
+ ["구리","Cu"],["산화 구리(II)","CuO"],["산화 구리","CuO"],["황산 구리(II)","CuSO4"],["황산 구리","CuSO4"],
+ ["마그네슘","Mg"],["산화 마그네슘","MgO"],["철","Fe"],["황","S"],["황화 철","FeS"],["아연","Zn"],["염화 아연","ZnCl2"],
+ ["질산 은","AgNO3"],["염화 은","AgCl"],["은","Ag"],["아이오딘화 칼륨","KI"],["질산 칼륨","KNO3"],["질산 납","Pb(NO3)2"],["아이오딘화 납","PbI2"],
+ ["염화 바륨","BaCl2"],["황산 바륨","BaSO4"],["포도당","C6H12O6"],["에탄올","C2H5OH"],["알루미늄","Al"],["산화 알루미늄","Al2O3"]
+];
+const NAMEMAP={};NAMES.forEach(([k,v])=>NAMEMAP[k.replace(/\s/g,"")]=v);
+const PRESETS=[
+ ["세포 호흡 (포도당 산화)","C6H12O6 + 6O2 -> 6CO2 + 6H2O"],["광합성","6CO2 + 6H2O -> C6H12O6 + 6O2"],
+ ["알코올 발효","C6H12O6 -> 2C2H5OH + 2CO2"],["젖산 발효","C6H12O6 -> 2C3H6O3"],
+ ["ATP 가수분해","C10H16N5O13P3 + H2O -> C10H15N5O10P2 + H3PO4"],["팔미트산 완전 산화","C16H32O2 + 23O2 -> 16CO2 + 16H2O"],
+ ["펩타이드 결합 (Gly-Gly)","2C2H5NO2 -> C4H8N2O3 + H2O"],["글리코시드 결합 (이당류)","2C6H12O6 -> C12H22O11 + H2O"],
+ ["카탈레이스 (H₂O₂ 분해)","2H2O2 -> 2H2O + O2"],["탄산 완충계 ①","CO2 + H2O <=> H2CO3"],
+ ["탄산 완충계 ②","H2CO3 <=> H^+ + HCO3^-"],["인산 완충계","H2PO4^- <=> H^+ + HPO4^2-"],
+ ["Tris 양성자화","C4H11NO3 + H^+ <=> C4H12NO3^+"],["질산화 (질산균)","NH4^+ + 2O2 -> NO3^- + 2H^+ + H2O"],
+ ["메테인 생성 (고세균)","CO2 + 4H2 -> CH4 + 2H2O"],["하버-보슈 (질소 고정)","N2 + 3H2 <=> 2NH3"],
+ ["에탄올 연소","C2H5OH + 3O2 -> 2CO2 + 3H2O"],["산-염기 중화","HCl + NaOH -> NaCl + H2O"]
+];
+const KEYS=[["→"," -> "],["⇌"," <=> "],["+"," + "],["(s)","(s)"],["(l)","(l)"],["(g)","(g)"],["(aq)","(aq)"],["²⁺","^2+"],["⁻","^-"],["·","·"]];
+
+const $=id=>document.getElementById(id);
+const SUBD="₀₁₂₃₄₅₆₇₈₉", SUPD="⁰¹²³⁴⁵⁶⁷⁸⁹";
+const toSub=s=>s.replace(/\d/g,d=>SUBD[d]);
+const toSup=s=>s.replace(/\d/g,d=>SUPD[d]).replace(/\+/g,"⁺").replace(/-/g,"⁻");
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const gcd=(a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b)[a,b]=[b,a%b];return a||1};
+const lcm=(a,b)=>Math.abs(a*b)/gcd(a,b);
+class E extends Error{}
+
+/* ---------- 해석 ---------- */
+function splitSide(s){
+  const out=[];let cur="";
+  for(let i=0;i<s.length;i++){
+    const c=s[i];
+    if(c==="+"){
+      let j=i+1;while(s[j]===" ")j++;
+      const nx=s[j]||"";
+      const isSep=cur.trim()!==""&&/[A-Z가-힣(\[0-9]/.test(nx)&&!/\^\{?\d*$/.test(cur);
+      if(isSep){out.push(cur);cur="";continue}
+    }
+    cur+=c;
+  }
+  out.push(cur);return out;
+}
+function countAtoms(f){
+  let i=0;
+  const num=()=>{let s="";while(i<f.length&&/\d/.test(f[i]))s+=f[i++];return s?+s:1};
+  const group=()=>{const m={};
+    while(i<f.length){const c=f[i];
+      if(c==="("||c==="["){i++;const inner=group();if(f[i]!==")"&&f[i]!=="]")throw new E("괄호가 닫히지 않았어요.");i++;const n=num();for(const k in inner)m[k]=(m[k]||0)+inner[k]*n}
+      else if(c===")"||c==="]")break;
+      else if(/[A-Z]/.test(c)){let sym=c;i++;if(i<f.length&&/[a-z]/.test(f[i])){sym+=f[i];i++}
+        if(!ELEM.has(sym)){ if(sym.length===2&&ELEM.has(sym[0])){i--;sym=sym[0]} else throw new E(`‘${sym}’은(는) 원소 기호가 아니에요.`)}
+        const n=num();m[sym]=(m[sym]||0)+n}
+      else if(/[a-z]/.test(c))throw new E(`원소 기호는 대문자로 시작해요. (‘${c}’ 확인)`);
+      else throw new E(`‘${c}’은(는) 화학식에 쓸 수 없는 글자예요.`);
+    }return m};
+  const r=group();if(i<f.length)throw new E("괄호 짝이 맞지 않아요.");return r;
+}
+function parseTerm(raw){
+  let t=raw.trim();if(!t)throw new E("‘+’ 사이에 빈 칸이 있어요.");
+  let state="";const sm=t.match(/\s*\((s|l|g|aq)\)$/i);if(sm){state=sm[1].toLowerCase();t=t.slice(0,sm.index).trim()}
+  let coef=1,coefStr="";const cm=t.match(/^(\d+\/\d+|\d+)\s*/);
+  if(cm&&t.length>cm[0].length){coefStr=cm[1];const p=coefStr.split("/");coef=p.length>1?p[0]/p[1]:+p[0];t=t.slice(cm[0].length)}
+  if(/[가-힣]/.test(t)){const k=t.replace(/\s/g,"");if(NAMEMAP[k])t=NAMEMAP[k];else throw new E(`‘${t}’은(는) 아직 모르는 물질 이름이에요. 화학식으로 써 주세요.`)}
+  t=t.replace(/\s/g,"");
+  let charge=0,m=t.match(/\^\{?(\d*)([+\-−])\}?$/);
+  if(m){charge=(m[1]?+m[1]:1)*(m[2]==="+"?1:-1);t=t.slice(0,m.index)}
+  else if((m=t.match(/(\d?)([+]+|[-−]+)$/))){const n=m[2].length>1?m[2].length:(m[1]?+m[1]:1);charge=n*(m[2][0]==="+"?1:-1);t=t.slice(0,m.index)}
+  if(!t)throw new E("화학식이 비어 있어요.");
+  const parts=t.split(/[·•*]/).map(p=>{const mm=p.match(/^(\d+)/);return{mult:mm?+mm[1]:1,multStr:mm?mm[1]:"",f:mm?p.slice(mm[1].length):p}});
+  const atoms={};parts.forEach(p=>{if(!p.f)throw new E("‘·’ 뒤에 화학식이 필요해요.");const a=countAtoms(p.f);for(const k in a)atoms[k]=(atoms[k]||0)+a[k]*p.mult});
+  return{coef,coefStr,parts,charge,state,atoms};
+}
+function parse(input){
+  input=String(input).replace(/[\u2080-\u2089]/g,c=>c.charCodeAt(0)-0x2080).replace(/([\u2070\u00b9\u00b2\u00b3\u2074-\u2079]*)([\u207a\u207b])/g,(m,d,sg)=>"^"+[...d].map(c=>"\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079".indexOf(c)).join("")+(sg==="\u207a"?"+":"-")).replace(/\u2212/g,"-");
+  const s=input.trim();if(!s)return null;
+  const am=s.match(/\s*(<=>|<->|⇌|->|→|=>|⟶|=)\s*/);
+  if(!am)return{single:true,L:splitSide(s).map(parseTerm),R:[]};
+  const rev=/<=>|<->|⇌/.test(am[1]);
+  const left=s.slice(0,am.index),right=s.slice(am.index+am[0].length);
+  if(!left.trim()||!right.trim())throw new E("화살표 양쪽에 물질을 써 주세요.");
+  return{single:false,rev,L:splitSide(left).map(parseTerm),R:splitSide(right).map(parseTerm)};
+}
+
+/* ---------- 계수 맞추기 ---------- */
+function balance(eq){
+  const sp=[...eq.L,...eq.R],n=sp.length,nl=eq.L.length;
+  const els=[...new Set(sp.flatMap(s=>Object.keys(s.atoms)))];
+  const rows=els.map(e=>sp.map((s,j)=>(s.atoms[e]||0)*(j<nl?1:-1)));
+  if(sp.some(s=>s.charge))rows.push(sp.map((s,j)=>s.charge*(j<nl?1:-1)));
+  const piv=[];let r=0;
+  for(let c=0;c<n&&r<rows.length;c++){
+    let p=rows.findIndex((row,i)=>i>=r&&row[c]!==0);if(p<0)continue;
+    [rows[r],rows[p]]=[rows[p],rows[r]];
+    for(let i=0;i<rows.length;i++){if(i===r||rows[i][c]===0)continue;
+      const a=rows[r][c],b=rows[i][c];rows[i]=rows[i].map((v,k)=>v*a-rows[r][k]*b);
+      const g=rows[i].reduce((x,v)=>gcd(x,v),0)||1;rows[i]=rows[i].map(v=>v/g)}
+    piv.push(c);r++;
+  }
+  const free=[...Array(n).keys()].filter(c=>!piv.includes(c));
+  if(free.length!==1)return null;
+  const f=free[0];let t=1;piv.forEach((c,i)=>t=lcm(t,rows[i][c]));
+  const x=Array(n).fill(0);x[f]=t;piv.forEach((c,i)=>x[c]=-rows[i][f]*t/rows[i][c]);
+  if(x.every(v=>v<=0))x.forEach((v,i)=>x[i]=-v);
+  if(x.some(v=>v<=0||!Number.isInteger(v)))return null;
+  const g=x.reduce((a,v)=>gcd(a,v),0);return x.map(v=>v/g);
+}
+function atomCheck(eq){
+  const tally=list=>{const m={},ch=[0];list.forEach(s=>{for(const k in s.atoms)m[k]=(m[k]||0)+s.atoms[k]*s.coef;ch[0]+=s.charge*s.coef});return[m,ch[0]]};
+  const[a,ca]=tally(eq.L),[b,cb]=tally(eq.R);
+  const els=[...new Set([...Object.keys(a),...Object.keys(b)])];
+  const rows=els.map(e=>({e,l:+(a[e]||0).toFixed(3),r:+(b[e]||0).toFixed(3)}));
+  const ok=rows.every(x=>x.l===x.r)&&Math.abs(ca-cb)<1e-9;
+  return{rows,ok,ca,cb};
+}
+function toInput(eq){
+  const term=s=>(s.coefStr&&s.coefStr!=="1"?s.coefStr:"")+s.parts.map(p=>p.multStr+p.f).join("·")+
+    (s.charge?"^"+(Math.abs(s.charge)>1?Math.abs(s.charge):"")+(s.charge>0?"+":"-"):"")+(s.state?`(${s.state})`:"");
+  const L=eq.L.map(term).join(" + ");return eq.single?L:L+(eq.rev?" <=> ":" -> ")+eq.R.map(term).join(" + ");
+}
+
+/* ---------- 출력 만들기 ---------- */
+const chg=c=>c?(Math.abs(c)>1?Math.abs(c):"")+(c>0?"+":"-"):"";
+function coefOut(s,mode){
+  if(!s.coefStr||s.coefStr==="1")return"";
+  if(s.coefStr.includes("/")){const[a,b]=s.coefStr.split("/");return mode==="hwp"?`{${a}} over {${b}} `:mode==="html"?`<sup>${a}</sup>⁄<sub>${b}</sub>`:`${a}/${b}`}
+  return s.coefStr;
+}
+function termHTML(s){return coefOut(s,"html")+s.parts.map(p=>p.multStr+esc(p.f).replace(/(\d+)/g,"<sub>$1</sub>")).join("·")+(s.charge?`<sup>${chg(s.charge).replace("-","−")}</sup>`:"")+(s.state?`(${s.state})`:"")}
+function termUni(s){return coefOut(s,"uni")+s.parts.map(p=>p.multStr+toSub(p.f)).join("·")+(s.charge?toSup(chg(s.charge)):"")+(s.state?`(${s.state})`:"")}
+function termHWP(s){return coefOut(s,"hwp")+s.parts.map(p=>p.multStr+p.f.replace(/(\d+)/g,"_{$1}")).join(" cdot ")+(s.charge?`^{${chg(s.charge)}}`:"")+(s.state?` (${s.state})`:"")}
+function build(eq){
+  const join=(f,sep)=>eq.L.map(f).join(sep);
+  const html=eq.L.map(termHTML).join('<span class="pl">+</span>')+(eq.single?"":`<span class="arr">${eq.rev?"⇌":"→"}</span>`+eq.R.map(termHTML).join('<span class="pl">+</span>'));
+  const rich=eq.L.map(termHTML).join(" + ")+(eq.single?"":` ${eq.rev?"⇌":"→"} `+eq.R.map(termHTML).join(" + "));
+  const uni=eq.L.map(termUni).join(" + ")+(eq.single?"":` ${eq.rev?"⇌":"→"} `+eq.R.map(termUni).join(" + "));
+  const hwp="rm "+eq.L.map(termHWP).join(" + ")+(eq.single?"":` ${eq.rev?"<->":"->"} `+eq.R.map(termHWP).join(" + "));
+  return{html,rich,uni,hwp};
+}
+
+/* ---------- 화면 ---------- */
+let cur=null;
+function render(){
+  const v=$("eq").value;
+  try{
+    cur=parse(v);
+    if(!cur){$("preview").className="preview err";$("preview").textContent="위 칸에 화학식을 써 보세요.";clearOut();$("status").innerHTML="";return}
+    const o=build(cur);cur.out=o;
+    $("preview").className="preview";$("preview").innerHTML="<span>"+o.html+"</span>";
+    $("o-rich").innerHTML=o.rich;$("o-uni").textContent=o.uni;$("o-hwp").textContent=o.hwp;
+    if(cur.single){$("status").innerHTML=`<span class="pill ok">화학식</span><div class="atoms">${Object.entries(cur.L.reduce((m,s)=>{for(const k in s.atoms)m[k]=(m[k]||0)+s.atoms[k]*s.coef;return m},{})).map(([e,n])=>`<span class="atom"><b>${e}</b>${n}개</span>`).join("")}</div>`;$("bal").disabled=true;return}
+    $("bal").disabled=false;
+    const c=atomCheck(cur);
+    $("status").innerHTML=(c.ok?`<span class="pill ok">✓ 원자 수가 맞아요</span>`:`<span class="pill no">원자 수가 달라요 · 계수 맞추기를 눌러 보세요</span>`)+
+      `<div class="atoms">${c.rows.map(x=>`<span class="atom${x.l!==x.r?" bad":""}"><b>${x.e}</b>${x.l} | ${x.r}</span>`).join("")}${(c.ca||c.cb)?`<span class="atom${c.ca!==c.cb?" bad":""}"><b>전하</b>${c.ca} | ${c.cb}</span>`:""}</div>`;
+  }catch(e){
+    cur=null;$("preview").className="preview err";$("preview").textContent=e instanceof E?e.message:"식을 읽지 못했어요. 쓰는 방법을 확인해 주세요.";clearOut();$("status").innerHTML="";
+  }
+}
+function clearOut(){$("o-rich").textContent="";$("o-uni").textContent="";$("o-hwp").textContent=""}
+function doBalance(silent){
+  if(!cur||cur.single)return;
+  const x=balance(cur);
+  if(!x){toast("계수를 자동으로 정할 수 없어요. 물질이 빠지지 않았는지 확인해 주세요.");return}
+  [...cur.L,...cur.R].forEach((s,i)=>{s.coef=x[i];s.coefStr=String(x[i])});
+  $("eq").value=toInput(cur);render();if(silent!==true)toast("계수를 맞췄어요 ⚖");
+}
+
+/* ---------- 복사 ---------- */
+let tt;function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),2200)}
+function flash(btn){if(!btn)return;const o=btn.textContent;btn.textContent="복사됨 ✓";btn.classList.add("done");setTimeout(()=>{btn.textContent=o;btn.classList.remove("done")},1400)}
+function legacyCopy(node){
+  const sel=getSelection(),rg=document.createRange();rg.selectNodeContents(node);sel.removeAllRanges();sel.addRange(rg);
+  let ok=false;try{ok=document.execCommand("copy")}catch(e){}return ok;
+}
+function copyText(text,btn,showNode){
+  const fb=()=>{const ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;opacity:0;top:0";document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand("copy")}catch(e){}ta.remove();
+    if(ok){flash(btn);toast("복사했어요. 한글에서 Ctrl+V 하세요.")}else{if(showNode)legacyCopy(showNode);toast("글자를 선택해 두었어요. Ctrl+C를 눌러 주세요.")}};
+  try{navigator.clipboard.writeText(text).then(()=>{flash(btn);toast("복사했어요. 한글에서 Ctrl+V 하세요.")},fb)}catch(e){fb()}
+}
+function copyRich(html,text,btn){
+  const fb=()=>{const d=document.createElement("div");d.innerHTML=html;d.style.cssText="position:fixed;left:-9999px;top:0;white-space:pre";document.body.appendChild(d);const ok=legacyCopy(d);d.remove();getSelection().removeAllRanges();
+    if(ok){flash(btn);toast("복사했어요. 한글 본문에 Ctrl+V 하세요.")}else copyText(text,btn)};
+  try{
+    if(!window.ClipboardItem)throw 0;
+    navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([html],{type:"text/html"}),"text/plain":new Blob([text],{type:"text/plain"})})])
+      .then(()=>{flash(btn);toast("복사했어요. 한글 본문에 Ctrl+V 하세요.")},fb);
+  }catch(e){fb()}
+}
+document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>{
+  if(!cur||!cur.out){toast("먼저 화학식을 써 주세요.");return}
+  const k=b.dataset.copy,o=cur.out;
+  if(k==="rich")copyRich(o.rich,o.uni,b);else if(k==="hwp")copyText(o.hwp,b,$("o-hwp"));else copyText(o.uni,b,$("o-uni"));
+}));
+
+/* ---------- 모아두기 ---------- */
+const KEY="hwp-chem-list";
+let saved=[];try{saved=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){saved=[]}
+if(!Array.isArray(saved))saved=[];
+const store=()=>{try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(e){}};
+function renderList(){
+  const L=$("list");
+  if(!saved.length){L.innerHTML=`<div class="empty">아직 모아둔 식이 없어요. 위에서 <b>＋ 모아두기</b>를 누르면 여기에 쌓여요.</div>`;return}
+  L.innerHTML="";
+  saved.forEach((s,i)=>{let o;try{o=build(parse(s))}catch(e){return}
+    const d=document.createElement("div");d.className="item";
+    d.innerHTML=`<div class="pv">${o.html}</div><div class="btns"><button data-a="rich">본문용</button><button data-a="hwp">수식용</button><button data-a="load">불러오기</button><button data-a="del" aria-label="삭제">✕</button></div>`;
+    d.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{const a=b.dataset.a;
+      if(a==="rich")copyRich(o.rich,o.uni,b);else if(a==="hwp")copyText(o.hwp,b);
+      else if(a==="load"){$("eq").value=s;render();$("eq").focus();scrollTo({top:0,behavior:"smooth"})}
+      else{saved.splice(i,1);store();renderList()}}));
+    L.appendChild(d)});
+}
+$("save").addEventListener("click",()=>{if(!cur){toast("먼저 올바른 화학식을 써 주세요.");return}
+  const s=toInput(cur);if(saved.includes(s)){toast("이미 모아둔 식이에요.");return}saved.push(s);store();renderList();toast("모아둔 식에 추가했어요.")});
+$("copyAll").addEventListener("click",e=>{if(!saved.length){toast("모아둔 식이 없어요.");return}
+  const os=saved.map(s=>{try{return build(parse(s))}catch(x){return null}}).filter(Boolean);
+  copyRich(os.map(o=>o.rich).join("<br>"),os.map(o=>o.uni).join("\n"),e.currentTarget)});
+$("clearAll").addEventListener("click",e=>{const b=e.currentTarget;
+  if(!saved.length)return;if(b.dataset.arm){saved=[];store();renderList();b.textContent="모두 지우기";delete b.dataset.arm;toast("모두 지웠어요.")}
+  else{b.dataset.arm=1;b.textContent="한 번 더 누르면 지워져요";setTimeout(()=>{if(b.dataset.arm){delete b.dataset.arm;b.textContent="모두 지우기"}},3000)}});
+
+/* ---------- 버튼들 ---------- */
+function insert(txt){const el=$("eq");const a=el.selectionStart??el.value.length,b=el.selectionEnd??el.value.length;
+  el.value=el.value.slice(0,a)+txt+el.value.slice(b);const p=a+txt.length;el.focus();el.setSelectionRange(p,p);render()}
+KEYS.forEach(([lab,ins])=>{const b=document.createElement("button");b.textContent=lab;b.title=ins.trim();b.addEventListener("click",()=>insert(ins));$("keys").appendChild(b)});
+PRESETS.forEach(([n,s])=>{const b=document.createElement("button");b.className="preset";
+  b.innerHTML=`<span class="n">${n}</span><span class="pv">${build(parse(s)).html}</span>`;
+  b.addEventListener("click",()=>{$("eq").value=s;render();scrollTo({top:0,behavior:"smooth"})});$("presets").appendChild(b)});
+NAMES.filter(([k],i,a)=>a.findIndex(x=>x[1]===NAMES[i][1])===i).forEach(([k,v])=>{const b=document.createElement("button");b.className="chip";
+  b.innerHTML=`${k}<i>${esc(v).replace(/(\d+)/g,"<sub>$1</sub>")}</i>`;b.addEventListener("click",()=>insert(v));$("chips").appendChild(b)});
+$("eq").addEventListener("input",render);
+$("eq").addEventListener("keydown",e=>{if(e.key==="Enter")doBalance()});
+$("bal").addEventListener("click",doBalance);
+render();doBalance(true);renderList();
+
+/* ---------- 사진에서 화학식 찾기 (깃허브용) ---------- */
+let foundList=[],photoFile=null,scanCtl=null;
+const smsg=(t,bad)=>{$("scanmsg").textContent=t;$("scanmsg").className="scanmsg"+(bad?" bad":"")};
+const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
+
+/* 탭 */
+function showTab(b){const a=!b;$("tabA").classList.toggle("on",a);$("tabB").classList.toggle("on",b);
+  $("tabA").setAttribute("aria-selected",a);$("tabB").setAttribute("aria-selected",b);$("paneA").hidden=b;$("paneB").hidden=a;LS.set("chem-tab",b?"B":"A")}
+$("tabA").addEventListener("click",()=>showTab(false));$("tabB").addEventListener("click",()=>showTab(true));
+if(LS.get("chem-tab")==="B")showTab(true);
+
+/* AI 답 읽기 */
+const PROMPT_LINES=`이 사진은 대학 전공 교재(일반화학·생화학·분자생물학 등) 또는 강의 자료입니다. 사진에 나오는 화학 반응식과 화학식을 모두 찾아 주세요.
+한 줄에 하나씩, "이름 | 식" 형식으로만 답하고 다른 설명은 쓰지 마세요.
+식 쓰는 규칙:
+- 아래 첨자 숫자는 그냥 숫자로 (H2SO4), 계수는 앞에 숫자로 (2H2O)
+- 화살표는 ->, 가역 반응은 <=>
+- 이온 전하는 ^ 뒤에 (Na^+, SO4^2-, Fe^3+)
+- 상태는 (s) (l) (g) (aq), 수화물 점은 ·
+- 사진에 적힌 계수를 그대로 옮기고, 빈칸이면 계수 없이 쓰기
+- 이름은 사진에 나온 반응 이름이나 물질 이름(영어 이름이면 영어 그대로), 없으면 짧은 한국어 설명
+- 구조식이나 골격 구조로만 그려진 물질은 분자식으로 바꿔서 쓰기
+예시:
+물의 생성 | 2H2 + O2 -> 2H2O
+황산 | H2SO4`;
+
+function readAIText(txt){
+  txt=String(txt||"").replace(/```[a-z]*\n?/gi,"").trim();
+  const j=txt.match(/\[[\s\S]*\]/);
+  if(j){try{const arr=JSON.parse(j[0]);if(Array.isArray(arr))return arr.filter(x=>x&&x.eq).map(x=>({name:String(x.name||"").slice(0,40),eq:String(x.eq).trim()}))}catch(e){}}
+  const out=[];
+  txt.split(/\n+/).forEach(line=>{
+    let l=line.replace(/^\s*(?:[-*•]|\d+[.)]|[①-⑳])\s*/,"").replace(/\*\*/g,"").replace(/`/g,"").trim();
+    if(!l)return;
+    let name="",eq=l;
+    const bar=l.split(/\s*[|｜]\s*/);
+    if(bar.length>=2){name=bar[0];eq=bar.slice(1).join(" ")}
+    else{const c=l.match(/^([가-힣()\s·,]+?)\s*[:：]\s*(.+)$/);if(c){name=c[1];eq=c[2]}}
+    if(!/[A-Z]/.test(eq))return;
+    out.push({name:name.trim().slice(0,40),eq:eq.trim()});
+  });
+  return out;
+}
+$("copyPrompt").addEventListener("click",e=>copyText(PROMPT_LINES,e.currentTarget));
+$("parseAnswer").addEventListener("click",()=>{
+  const t=$("aiAnswer").value;if(!t.trim()){smsg("AI의 답을 먼저 붙여 넣어 주세요.",true);return}
+  foundList=readAIText(t);renderFound();
+});
+
+/* Gemini 키 */
+const savedKey=LS.get("chem-gemini-key");if(savedKey)$("gkey").value=savedKey;
+$("saveKey").addEventListener("click",()=>{const k=$("gkey").value.trim();if(!k){toast("키를 먼저 붙여 넣어 주세요.");return}
+  toast(LS.set("chem-gemini-key",k)?"이 컴퓨터에 키를 저장했어요.":"저장할 수 없는 브라우저예요. 이번에만 쓸 수 있어요.");updScan()});
+$("delKey").addEventListener("click",()=>{LS.del("chem-gemini-key");$("gkey").value="";toast("키를 지웠어요.");updScan()});
+$("gkey").addEventListener("input",updScan);
+const savedModel=LS.get("chem-gemini-model");if(savedModel)$("gmodel").value=savedModel;
+$("gmodel").addEventListener("change",()=>LS.set("chem-gemini-model",$("gmodel").value));
+function updScan(){$("scan").disabled=!(photoFile&&$("gkey").value.trim())}
+
+/* 사진 올리기 */
+function setPhoto(f){
+  if(!f||!/^image\//.test(f.type)){smsg("사진 파일(JPG, PNG)을 올려 주세요.",true);return}
+  photoFile=f;const t=$("thumb");try{if(t.src)URL.revokeObjectURL(t.src)}catch(e){}
+  t.src=URL.createObjectURL(f);t.hidden=false;
+  $("dropmsg").querySelector("b").textContent="📷 다른 사진으로 바꾸기";
+  updScan();smsg($("gkey").value.trim()?"‘화학식 찾기’를 눌러 주세요.":"Gemini API 키를 넣으면 ‘화학식 찾기’를 누를 수 있어요.");
+}
+$("drop").tabIndex=0;
+$("drop").addEventListener("click",()=>$("photo").click());
+$("drop").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("photo").click()}});
+$("photo").addEventListener("change",e=>setPhoto(e.target.files[0]));
+["dragenter","dragover"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("over")}));
+["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("over")}));
+$("drop").addEventListener("drop",e=>setPhoto(e.dataTransfer.files[0]));
+document.addEventListener("paste",e=>{if(e.target&&(e.target.id==="aiAnswer"||e.target.id==="eq"||e.target.id==="gkey"))return;
+  const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));if(it){e.preventDefault();showTab(true);setPhoto(it.getAsFile())}});
+
+function shrink(file){ // 긴 변 1600px JPEG로 줄여서 base64
+  return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{
+    const s=Math.min(1,1600/Math.max(img.width,img.height));const c=document.createElement("canvas");
+    c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    res(c.toDataURL("image/jpeg",0.9).split(",")[1])};img.onerror=()=>rej(new Error("img"));img.src=URL.createObjectURL(file)});
+}
+async function askGemini(model,key,b64,signal){
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{
+    method:"POST",signal,headers:{"Content-Type":"application/json","x-goog-api-key":key},
+    body:JSON.stringify({contents:[{parts:[{text:PROMPT_LINES},{inline_data:{mime_type:"image/jpeg",data:b64}}]}]})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const e=new Error(j?.error?.message||("HTTP "+r.status));e.status=r.status;throw e}
+  return (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("\n");
+}
+$("scan").addEventListener("click",async()=>{
+  const key=$("gkey").value.trim();if(!key||!photoFile)return;
+  scanCtl=new AbortController();$("scan").disabled=true;$("stopScan").hidden=false;$("addAllFound").hidden=true;$("found").innerHTML="";
+  $("scanmsg").innerHTML='<span class="dots">Gemini가 사진 속 화학식을 읽고 있어요</span>';$("scanmsg").className="scanmsg";
+  const pick=$("gmodel").value;const models=pick==="auto"?["gemini-2.5-flash","gemini-flash-latest","gemini-flash-lite-latest"]:[pick];
+  try{
+    const b64=await shrink(photoFile);let text=null,last=null;
+    for(const m of models){
+      try{text=await askGemini(m,key,b64,scanCtl.signal);break}
+      catch(e){if(e.name==="AbortError")throw e;last=e;if(e.status===400||e.status===401||e.status===403)break}
+    }
+    if(text===null)throw last;
+    foundList=readAIText(text);renderFound();
+  }catch(e){
+    if(e&&e.name==="AbortError")smsg("멈췄어요.");
+    else if(e&&e.message==="img")smsg("이 사진은 열 수 없어요. 다른 사진(JPG, PNG)으로 올려 주세요.",true);
+    else if(e&&(e.status===400&&/key/i.test(e.message)||e.status===401||e.status===403))smsg("API 키가 맞지 않아요. 키를 다시 확인해 주세요.",true);
+    else if(e&&e.status===429)smsg("무료 사용량을 다 썼어요. 잠시 뒤에 하거나 ‘모델’에서 다른 것을 골라 보세요.",true);
+    else if(e&&e.status)smsg(`Gemini가 답하지 못했어요 (${e.status}). 잠시 뒤에 다시 눌러 주세요.`,true);
+    else smsg("인터넷 연결을 확인하고 다시 눌러 주세요.",true);
+  }finally{updScan();$("stopScan").hidden=true}
+});
+$("stopScan").addEventListener("click",()=>scanCtl?.abort());
+
+/* 찾은 식 보여주기 */
+function renderFound(){
+  const F=$("found");F.innerHTML="";$("addAllFound").hidden=true;
+  if(!foundList.length){smsg("화학식을 찾지 못했어요. 사진을 가까이 찍거나, AI의 답이 ‘이름 | 식’ 모양인지 확인해 주세요.",true);return}
+  let okN=0;
+  foundList.forEach(f=>{
+    let o=null,norm=f.eq;try{const p=parse(f.eq);o=build(p);norm=toInput(p);okN++}catch(e){}
+    const d=document.createElement("div");d.className="fitem"+(o?"":" bad");
+    d.innerHTML=`<div class="fbody" title="위 칸으로 불러오기"><span class="n"></span><span class="pv"></span></div><button>${o?"＋ 모아두기":"고쳐 쓰기"}</button>`;
+    d.querySelector(".n").textContent=f.name||(o?"찾은 식":"확인이 필요한 식");
+    if(o)d.querySelector(".pv").innerHTML=o.html;else d.querySelector(".pv").textContent=f.eq;
+    const load=()=>{$("eq").value=norm;render();$("eq").focus();scrollTo({top:0,behavior:"smooth"})};
+    d.querySelector(".fbody").addEventListener("click",load);
+    d.querySelector("button").addEventListener("click",()=>{if(!o){load();return}
+      if(!saved.includes(norm)){saved.push(norm);store();renderList()}toast("모아둔 식에 추가했어요.")});
+    F.appendChild(d);
+  });
+  smsg(`${foundList.length}개를 찾았어요. 식을 누르면 위 칸으로 불러와서 확인하고 복사할 수 있어요.`);
+  $("addAllFound").hidden=okN===0;
+}
+$("addAllFound").addEventListener("click",()=>{let n=0;
+  foundList.forEach(f=>{try{const s=toInput(parse(f.eq));if(!saved.includes(s)){saved.push(s);n++}}catch(e){}});
+  store();renderList();toast(n?`${n}개를 모아둔 식에 추가했어요.`:"이미 모두 모아둔 식이에요.")});
+/* ================= 생명정보 도구 ================= */
+const AW={H:1.008,He:4.0026,Li:6.94,Be:9.0122,B:10.81,C:12.011,N:14.007,O:15.999,F:18.998,Ne:20.180,Na:22.990,Mg:24.305,Al:26.982,Si:28.085,P:30.974,S:32.06,Cl:35.45,Ar:39.95,K:39.098,Ca:40.078,Sc:44.956,Ti:47.867,V:50.942,Cr:51.996,Mn:54.938,Fe:55.845,Co:58.933,Ni:58.693,Cu:63.546,Zn:65.38,Ga:69.723,Ge:72.630,As:74.922,Se:78.971,Br:79.904,Kr:83.798,Rb:85.468,Sr:87.62,Y:88.906,Zr:91.224,Nb:92.906,Mo:95.95,Ru:101.07,Rh:102.91,Pd:106.42,Ag:107.87,Cd:112.41,In:114.82,Sn:118.71,Sb:121.76,Te:127.60,I:126.90,Xe:131.29,Cs:132.91,Ba:137.33,La:138.91,Ce:140.12,Pr:140.91,Nd:144.24,Sm:150.36,Eu:151.96,Gd:157.25,Tb:158.93,Dy:162.50,Ho:164.93,Er:167.26,Tm:168.93,Yb:173.05,Lu:174.97,Hf:178.49,Ta:180.95,W:183.84,Re:186.21,Os:190.23,Ir:192.22,Pt:195.08,Au:196.97,Hg:200.59,Tl:204.38,Pb:207.2,Bi:208.98,Th:232.04,Pa:231.04,U:238.03};
+function molarMass(atoms){let m=0;for(const k in atoms){if(AW[k]===undefined)return NaN;m+=AW[k]*atoms[k]}return m}
+const fmt=(x,d)=>{if(!isFinite(x))return"—";const a=Math.abs(x);if(d!==undefined)return x.toLocaleString("ko-KR",{maximumFractionDigits:d,minimumFractionDigits:0});
+  if(a===0)return"0";if(a>=1000)return x.toLocaleString("ko-KR",{maximumFractionDigits:1});if(a>=1)return(+x.toPrecision(5)).toLocaleString("ko-KR",{maximumFractionDigits:4});return String(+x.toPrecision(4))};
+const fHTML=f=>esc(f).replace(/(\d+)/g,"<sub>$1</sub>");
+function formulaInfo(str){const t=parseTerm(str);return{t,atoms:t.atoms,mw:molarMass(t.atoms),html:termHTML({...t,coefStr:""})}}
+
+/* ---------- 메뉴(탭) ---------- */
+const TABS=["chem","calc","seq","bio","eqs","news"];
+function goTab(name,push){if(!TABS.includes(name))name="chem";
+  TABS.forEach(t=>{$("pane-"+t).hidden=t!==name;const a=document.querySelector(`.nav a[href="#${t}"]`);if(a){if(t===name)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")}});
+  if(push&&location.hash!=="#"+name){try{history.replaceState(null,"","#"+name)}catch(e){location.hash=name}}
+  if(name==="seq")runSeq();if(name==="news"&&!newsLoaded)loadNews();}
+document.querySelectorAll(".nav a").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();goTab(a.getAttribute("href").slice(1),true);scrollTo({top:0})}));
+addEventListener("hashchange",()=>goTab(location.hash.slice(1)));
+
+/* ---------- 화학식 탭: 몰질량 표시 ---------- */
+function addMass(){
+  const box=$("massline");if(!cur){box.innerHTML="";return}
+  const seen=new Set(),chips=[];
+  [...cur.L,...cur.R].forEach(s=>{const key=s.parts.map(p=>p.multStr+p.f).join("·");if(seen.has(key))return;seen.add(key);
+    const mw=molarMass(s.atoms);chips.push(`<button class="mchip" data-f="${esc(key)}" title="분자량·용액 계산으로 보내기">${termHTML({...s,coefStr:"",state:""})}<b>${isFinite(mw)?fmt(mw,3)+" g/mol":"—"}</b></button>`)});
+  box.innerHTML=`<span class="lab">몰질량</span>`+chips.join("");
+  box.querySelectorAll(".mchip").forEach(b=>b.addEventListener("click",()=>{$("mmIn").value=b.dataset.f;calcMM(true);goTab("calc",true);scrollTo({top:0})}));
+}
+const _render0=render;render=function(){_render0();addMass()};
+$("eq").addEventListener("input",addMass);
+
+/* ---------- 몰질량 계산 ---------- */
+let MW=180.156;
+function calcMM(apply){
+  const v=$("mmIn").value.trim();
+  if(!v){$("mmRes").innerHTML="";$("mmComp").innerHTML="";return}
+  try{
+    let key=v;if(/[가-힣]/.test(v)){const k=v.replace(/\s/g,"");if(NAMEMAP[k])key=NAMEMAP[k]}
+    const i=formulaInfo(key);
+    if(!isFinite(i.mw))throw new E("원자량이 정해지지 않은 원소가 들어 있어요.");
+    $("mmRes").innerHTML=`<span class="f">${i.html}</span><span class="big">${fmt(i.mw,3)}</span><span class="hint" style="margin:0">g/mol</span><button id="mmCopy">값 복사</button>`;
+    $("mmCopy").addEventListener("click",e=>copyText(i.mw.toFixed(3),e.currentTarget));
+    const rows=Object.entries(i.atoms).map(([e,n])=>({e,n,m:AW[e]*n})).sort((a,b)=>b.m-a.m);
+    $("mmComp").innerHTML=rows.map(r=>`<div class="crow"><span class="s">${r.e}</span><span class="bar"><i style="width:${(r.m/i.mw*100).toFixed(2)}%"></i></span><span class="v">${r.n}개 · ${(r.m/i.mw*100).toFixed(2)}%</span></div>`).join("");
+    if(apply)setMW(i.mw);
+    return i.mw;
+  }catch(e){$("mmRes").innerHTML=`<span class="err">${esc(e instanceof E?e.message:"화학식을 읽지 못했어요.")}</span>`;$("mmComp").innerHTML=""}
+}
+function setMW(m){MW=+m.toFixed(3);$("mmMW").value=MW;$("sMW").value=MW;massFromMol=false;calcMol();calcSol()}
+$("mmIn").addEventListener("input",()=>calcMM(false));
+$("mmUse").addEventListener("click",()=>{const m=calcMM(true);if(m)toast(`몰질량 ${fmt(m,3)} g/mol을 계산에 넣었어요.`)});
+
+/* 질량 ↔ 몰 */
+let massFromMol=false;
+function calcMol(){
+  const mw=+$("mmMW").value;
+  if(massFromMol){const n=+$("mMol").value*+$("mMolU").value;$("mMass").value=mw>0&&$("mMol").value!==""?+((n*mw)/+$("mMassU").value).toPrecision(6):""}
+  else{const g=+$("mMass").value*+$("mMassU").value;$("mMol").value=mw>0&&$("mMass").value!==""?+((g/mw)/+$("mMolU").value).toPrecision(6):""}
+}
+$("mMass").addEventListener("input",()=>{massFromMol=false;calcMol()});
+$("mMol").addEventListener("input",()=>{massFromMol=true;calcMol()});
+["mmMW","mMassU","mMolU"].forEach(id=>$(id).addEventListener("input",calcMol));
+$("mmMW").addEventListener("input",()=>{$("sMW").value=$("mmMW").value;calcSol()});
+
+/* 용액 만들기 */
+function calcSol(){
+  const mw=+$("sMW").value,c=+$("sC").value*+$("sCU").value,v=+$("sV").value*+$("sVU").value;
+  if(!(mw>0&&c>0&&v>0)){$("sOut").className="answer err";$("sOut").textContent="몰질량, 농도, 부피를 모두 0보다 크게 넣어 주세요.";return}
+  const g=c*v*mw;const[val,u]=g>=1?[g,"g"]:g>=1e-3?[g*1e3,"mg"]:[g*1e6,"µg"];
+  const cTxt=$("sC").value+" "+$("sCU").selectedOptions[0].text,vTxt=$("sV").value+" "+$("sVU").selectedOptions[0].text;
+  $("sOut").className="answer";
+  $("sOut").innerHTML=`필요한 양 <b>${fmt(val,4)} ${u}</b><br>물질 ${fmt(val,4)} ${u}을(를) 녹인 뒤, 전체 부피를 ${vTxt}로 맞추면 ${cTxt} 용액이 돼요.<br><span class="hint">물질량 ${fmt(c*v*1e3,4)} mmol</span>`;
+}
+["sMW","sC","sCU","sV","sVU"].forEach(id=>$(id).addEventListener("input",calcSol));
+
+/* 희석 */
+function calcDil(){
+  const ids=["dC1","dV1","dC2","dV2"],val=ids.map(id=>$(id).value.trim()),empty=val.filter(x=>x==="").length;
+  const cu=$("dCU").value,vu=$("dVU").value,out=$("dOut");
+  if(empty!==1){out.className="answer err";out.textContent=empty===0?"구하고 싶은 칸 하나를 비워 주세요.":"한 칸만 비워 두세요.";return}
+  const[C1,V1,C2,V2]=val.map(Number);let msg="";
+  if(val[0]===""){const r=C2*V2/V1;msg=`원액 농도 C₁ = <b>${fmt(r)} ${cu}</b>`}
+  else if(val[1]===""){const r=C2*V2/C1;msg=`원액 <b>${fmt(r)} ${vu}</b>에 용매 <b>${fmt(V2-r)} ${vu}</b>를 더해 ${fmt(V2)} ${vu}로 만들어요.`;if(C2>C1)msg="만들 농도가 원액보다 진해서 희석으로는 만들 수 없어요."}
+  else if(val[2]===""){const r=C1*V1/V2;msg=`만들어지는 농도 C₂ = <b>${fmt(r)} ${cu}</b>`}
+  else{const r=C1*V1/C2;msg=`전체 부피 V₂ = <b>${fmt(r)} ${vu}</b> (용매 ${fmt(r-V1)} ${vu} 추가)`}
+  if([C1,V1,C2,V2].some((x,i)=>val[i]!==""&&!(x>0))){out.className="answer err";out.textContent="0보다 큰 숫자를 넣어 주세요.";return}
+  out.className="answer";out.innerHTML=msg;
+}
+["dC1","dV1","dC2","dV2","dCU","dVU"].forEach(id=>$(id).addEventListener("input",calcDil));
+
+/* 완충 용액 */
+function calcBuf(){
+  const pka=+$("bPka").value,ph=+$("bPH").value,tot=+$("bTot").value,out=$("bOut");
+  if($("bPka").value===""||$("bPH").value===""){out.className="answer err";out.textContent="pKa와 pH를 넣어 주세요.";return}
+  const r=Math.pow(10,ph-pka),base=r/(1+r);
+  out.className="answer";
+  out.innerHTML=`[A⁻] : [HA] = <b>${fmt(r,3)} : 1</b><br>염기형 ${(base*100).toFixed(1)}% · 산형 ${((1-base)*100).toFixed(1)}%`+
+    (tot>0?`<br>전체 ${fmt(tot)} mM이면 염기형 <b>${fmt(tot*base,2)}</b> mM, 산형 <b>${fmt(tot*(1-base),2)}</b> mM`:"")+
+    (Math.abs(ph-pka)>1?`<br><span style="color:var(--warn)">pH가 pKa ±1 밖이라 완충 능력이 약해요.</span>`:"");
+}
+$("bSel").addEventListener("change",()=>{if($("bSel").value)$("bPka").value=$("bSel").value;calcBuf()});
+["bPka","bPH","bTot"].forEach(id=>$(id).addEventListener("input",calcBuf));
+
+/* ---------- 서열 도구 ---------- */
+const CODE="FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",BASES="TCAG";
+const CODON={};for(let i=0;i<64;i++)CODON[BASES[i>>4]+BASES[(i>>2)&3]+BASES[i&3]]=CODE[i];
+const AA3={A:"Ala",R:"Arg",N:"Asn",D:"Asp",C:"Cys",Q:"Gln",E:"Glu",G:"Gly",H:"His",I:"Ile",L:"Leu",K:"Lys",M:"Met",F:"Phe",P:"Pro",S:"Ser",T:"Thr",W:"Trp",Y:"Tyr",V:"Val","*":"Ter",X:"Xaa"};
+const RES={A:71.0788,R:156.1875,N:114.1038,D:115.0886,C:103.1388,E:129.1155,Q:128.1307,G:57.0519,H:137.1411,I:113.1594,L:113.1594,K:128.1741,M:131.1926,F:147.1766,P:97.1167,S:87.0782,T:101.1051,W:186.2132,Y:163.1760,V:99.1326};
+const COMP={A:"T",T:"A",G:"C",C:"G",U:"A",R:"Y",Y:"R",K:"M",M:"K",B:"V",V:"B",D:"H",H:"D",S:"S",W:"W",N:"N"};
+const revcomp=s=>[...s].reverse().map(c=>COMP[c]||"N").join("");
+const translate=(s,f)=>{let p="";for(let i=f;i+3<=s.length;i+=3)p+=CODON[s.substr(i,3)]||"X";return p};
+function cleanSeq(raw){return raw.split(/\r?\n/).filter(l=>!l.trim().startsWith(">")).join("").toUpperCase().replace(/[^A-Z*]/g,"")}
+function detect(s){if(!s)return null;const nuc=(s.match(/[ACGTUN]/g)||[]).length/s.length;if(nuc>=0.9)return s.includes("U")&&!s.includes("T")?"rna":"dna";return"prot"}
+function longestORF(dna){
+  let best=null;const strands=[["+",dna],["−",revcomp(dna)]];
+  strands.forEach(([sg,s])=>{for(let f=0;f<3;f++){const p=translate(s,f);let i=0;
+    while(i<p.length){const m=p.indexOf("M",i);if(m<0)break;let e=p.indexOf("*",m);const closed=e>=0;if(e<0)e=p.length;
+      const len=e-m;if(!best||len>best.len)best={len,sg,f:f+1,prot:p.slice(m,e),closed,nt:sg==="+"?[f+m*3+1,f+e*3+(closed?3:0)]:null};i=e+1}}});
+  return best;
+}
+function hiProt(p){return esc(p).replace(/\*/g,'<span class="st">*</span>').replace(/M/g,'<span class="mt">M</span>')}
+function outBox(title,desc,text,html){return{title,desc,text,html:html||esc(text)}}
+let seqOutData=[];
+function runSeq(){
+  const raw=$("seqIn").value,s0=cleanSeq(raw),sum=$("seqSum"),outs=$("seqOuts"),comp=$("seqComp");
+  if(!s0){sum.innerHTML=`<span class="hint">서열을 붙여 넣으면 길이, GC 함량, 분자량, 번역 결과가 바로 나와요.</span>`;comp.innerHTML="";outs.innerHTML="";return}
+  let type=$("seqType").value==="auto"?detect(s0):$("seqType").value;
+  const stats=[],boxes=[];let counts={};
+  for(const c of s0)counts[c]=(counts[c]||0)+1;
+  const N=s0.length;
+  if(type==="dna"||type==="rna"){
+    const s=s0.replace(/U/g,type==="rna"?"U":"T");const dna=s.replace(/U/g,"T");
+    const gc=((counts.G||0)+(counts.C||0)),at=(counts.A||0)+(counts.T||0)+(counts.U||0);
+    stats.push(["종류",type==="dna"?"DNA":"RNA","kind"],["길이",N.toLocaleString()+(type==="dna"?" bp":" nt")],["GC 함량",(gc/N*100).toFixed(1)+"%"]);
+    if(type==="dna"){
+      const ss=(counts.A||0)*313.21+(counts.T||0)*304.2+(counts.C||0)*289.18+(counts.G||0)*329.21-61.96;
+      stats.push(["단일 가닥 MW",fmt(ss/1000,2)+" kDa"],["이중 가닥 MW",fmt((N*617.96+36.04)/1000,2)+" kDa"]);
+      if(N<=60){const tm=N<14?2*at+4*gc:64.9+41*(gc-16.4)/N;stats.push(["Tm (대략)",tm.toFixed(1)+" °C"])}
+    }else{const mw=(counts.A||0)*329.2+(counts.U||0)*306.2+(counts.C||0)*305.2+(counts.G||0)*345.2+159;stats.push(["RNA MW",fmt(mw/1000,2)+" kDa"])}
+    const rc=revcomp(dna);
+    boxes.push(outBox("역상보 가닥 (5′→3′)","상보적인 가닥을 5′부터 읽은 서열이에요. 프라이머 설계에 써요.",type==="rna"?rc.replace(/T/g,"U"):rc));
+    if(type==="dna")boxes.push(outBox("전사 (mRNA)","이 서열을 코딩 가닥으로 보고 T를 U로 바꾼 mRNA예요.",dna.replace(/T/g,"U")));
+    else boxes.push(outBox("역전사 (cDNA)","RNA와 상보적인 DNA 가닥(5′→3′)이에요.",rc));
+    const orf=longestORF(dna);
+    if(orf&&orf.len>0)boxes.push(outBox(`가장 긴 ORF · ${orf.len} aa`,`${orf.sg} 가닥 ${orf.f}번 읽기틀${orf.nt?` · ${orf.nt[0]}–${orf.nt[1]}번 염기`:""}${orf.closed?"":" · 종결 코돈 없이 끝남"}`,orf.prot,hiProt(orf.prot)));
+    const fr=[];for(let f=0;f<3;f++)fr.push(`+${f+1}  `+translate(dna,f));const rcd=rc;for(let f=0;f<3;f++)fr.push(`−${f+1}  `+translate(rcd,f));
+    boxes.push(outBox("번역 · 6개 읽기틀","+는 입력한 가닥, −는 역상보 가닥이에요. 초록 M은 시작, 주황 *는 종결이에요.",fr.join("\n"),fr.map(hiProt).join("\n")));
+  }else{
+    const p=s0.replace(/\*/g,"");let mw=18.015,unk=0;for(const c of p){if(RES[c])mw+=RES[c];else{mw+=110;unk++}}
+    const W=counts.W||0,Y=counts.Y||0,C=counts.C||0;const e1=5500*W+1490*Y,e2=e1+125*Math.floor(C/2);
+    stats.push(["종류","단백질","kind"],["길이",p.length.toLocaleString()+" aa"],["분자량",fmt(mw/1000,2)+" kDa"],["ε280",e2.toLocaleString()+" M⁻¹cm⁻¹"],["A280 (1 mg/mL)",(e2/mw).toFixed(3)]);
+    if(unk)stats.push(["알 수 없는 문자",unk+"개"]);
+    boxes.push(outBox("세 글자 코드","한 글자 코드를 세 글자 약어로 바꾼 거예요.",[...p].map(c=>AA3[c]||"Xaa").join("-")));
+  }
+  sum.innerHTML=stats.map(([k,v,c])=>`<div class="stat ${c||""}"><span>${k}</span><b>${v}</b></div>`).join("");
+  const keys=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);const mx=counts[keys[0]];
+  comp.innerHTML=keys.slice(0,type==="prot"?21:8).map(k=>`<div class="crow"><span class="s">${esc(k)}</span><span class="bar"><i style="width:${(counts[k]/mx*100).toFixed(1)}%"></i></span><span class="v">${counts[k]} · ${(counts[k]/N*100).toFixed(1)}%</span></div>`).join("");
+  seqOutData=boxes;
+  outs.innerHTML=boxes.map((b,i)=>`<div class="out"><span class="t">${b.title}</span><span class="d">${b.desc}</span><button data-si="${i}">복사</button><div class="seqv">${b.html}</div></div>`).join("");
+  outs.querySelectorAll("[data-si]").forEach(btn=>btn.addEventListener("click",()=>{let t=seqOutData[+btn.dataset.si].text;if(/^[+−]\d/.test(t))t=t.replace(/^([+−]\d)\s+/gm,"$1 ");copyText(t,btn)}));
+}
+let seqT;$("seqIn").addEventListener("input",()=>{clearTimeout(seqT);seqT=setTimeout(runSeq,200)});
+$("seqType").addEventListener("change",runSeq);
+const EXDNA=$("seqIn").value;
+$("exDNA").addEventListener("click",()=>{$("seqIn").value=EXDNA;$("seqType").value="auto";runSeq()});
+$("exPrimer").addEventListener("click",()=>{$("seqIn").value=">forward_primer\nATGGCTAGCAAAGGAGAAGAAC";$("seqType").value="auto";runSeq()});
+$("exProt").addEventListener("click",()=>{$("seqIn").value=">insulin_B_chain\nFVNQHLCGSHLVEALYLVCGERGFFYTPKT";$("seqType").value="auto";runSeq()});
+$("seqClear").addEventListener("click",()=>{$("seqIn").value="";runSeq();$("seqIn").focus()});
+(function(){let h="<tr><th></th>"+[..."TCAG"].map(b=>`<th>${b}</th>`).join("")+"</tr>";
+  for(const a of BASES){h+=`<tr><th>${a}</th>`;for(const b of BASES){h+="<td>"+[..."TCAG"].map(c=>{const aa=CODON[a+b+c];const cls=aa==="*"?"st":a+b+c==="ATG"?"mt":"";return`<div class="${cls}">${a+b+c} ${AA3[aa]} (${aa})</div>`}).join("")+"</td>"}h+="</tr>"}
+  $("codonTable").innerHTML=h})();
+
+/* ---------- 생체분자 사전 ---------- */
+const BIO=[
+ ["아미노산","알라닌","Alanine","C3H7NO2","Ala · A","비극성"],["아미노산","아르지닌","Arginine","C6H14N4O2","Arg · R","염기성"],
+ ["아미노산","아스파라진","Asparagine","C4H8N2O3","Asn · N","극성"],["아미노산","아스파르트산","Aspartic acid","C4H7NO4","Asp · D","산성"],
+ ["아미노산","시스테인","Cysteine","C3H7NO2S","Cys · C","극성"],["아미노산","글루타민","Glutamine","C5H10N2O3","Gln · Q","극성"],
+ ["아미노산","글루탐산","Glutamic acid","C5H9NO4","Glu · E","산성"],["아미노산","글라이신","Glycine","C2H5NO2","Gly · G","비극성"],
+ ["아미노산","히스티딘","Histidine","C6H9N3O2","His · H","염기성"],["아미노산","아이소류신","Isoleucine","C6H13NO2","Ile · I","비극성"],
+ ["아미노산","류신","Leucine","C6H13NO2","Leu · L","비극성"],["아미노산","라이신","Lysine","C6H14N2O2","Lys · K","염기성"],
+ ["아미노산","메티오닌","Methionine","C5H11NO2S","Met · M","비극성"],["아미노산","페닐알라닌","Phenylalanine","C9H11NO2","Phe · F","비극성"],
+ ["아미노산","프롤린","Proline","C5H9NO2","Pro · P","비극성"],["아미노산","세린","Serine","C3H7NO3","Ser · S","극성"],
+ ["아미노산","트레오닌","Threonine","C4H9NO3","Thr · T","극성"],["아미노산","트립토판","Tryptophan","C11H12N2O2","Trp · W","비극성"],
+ ["아미노산","타이로신","Tyrosine","C9H11NO3","Tyr · Y","극성"],["아미노산","발린","Valine","C5H11NO2","Val · V","비극성"],
+ ["핵산","아데닌","Adenine","C5H5N5","A","퓨린"],["핵산","구아닌","Guanine","C5H5N5O","G","퓨린"],["핵산","사이토신","Cytosine","C4H5N3O","C","피리미딘"],
+ ["핵산","타이민","Thymine","C5H6N2O2","T","피리미딘 · DNA"],["핵산","유라실","Uracil","C4H4N2O2","U","피리미딘 · RNA"],
+ ["핵산","리보스","Ribose","C5H10O5","","RNA의 당"],["핵산","디옥시리보스","Deoxyribose","C5H10O4","","DNA의 당"],
+ ["핵산","ATP","Adenosine triphosphate","C10H16N5O13P3","ATP","에너지 운반"],["핵산","ADP","Adenosine diphosphate","C10H15N5O10P2","ADP",""],
+ ["핵산","AMP","Adenosine monophosphate","C10H14N5O7P","AMP",""],["핵산","dATP","Deoxyadenosine triphosphate","C10H16N5O12P3","dATP","PCR 재료"],
+ ["대사물질","포도당","Glucose","C6H12O6","","단당류"],["대사물질","과당","Fructose","C6H12O6","","단당류"],["대사물질","갈락토스","Galactose","C6H12O6","","단당류"],
+ ["대사물질","설탕(수크로스)","Sucrose","C12H22O11","","이당류"],["대사물질","젖당(락토스)","Lactose","C12H22O11","","이당류"],["대사물질","엿당(말토스)","Maltose","C12H22O11","","이당류"],
+ ["대사물질","피루브산","Pyruvic acid","C3H4O3","","해당 과정"],["대사물질","젖산","Lactic acid","C3H6O3","","발효"],["대사물질","시트르산","Citric acid","C6H8O7","","TCA 회로"],
+ ["대사물질","에탄올","Ethanol","C2H5OH","","발효"],["대사물질","요소","Urea","CH4N2O","","질소 배설"],["대사물질","콜레스테롤","Cholesterol","C27H46O","","지질"],
+ ["대사물질","팔미트산","Palmitic acid","C16H32O2","","포화 지방산"],["대사물질","올레산","Oleic acid","C18H34O2","","불포화 지방산"],
+ ["실험 시약","Tris","Tris(hydroxymethyl)aminomethane","C4H11NO3","","완충제"],["실험 시약","HEPES","HEPES","C8H18N2O4S","","완충제"],
+ ["실험 시약","MOPS","MOPS","C7H15NO4S","","완충제"],["실험 시약","EDTA 이나트륨 이수화물","Na₂EDTA·2H₂O","C10H14N2Na2O8·2H2O","","킬레이트제"],
+ ["실험 시약","SDS","Sodium dodecyl sulfate","C12H25NaO4S","","계면활성제"],["실험 시약","DTT","Dithiothreitol","C4H10O2S2","","환원제"],
+ ["실험 시약","β-머캅토에탄올","2-Mercaptoethanol","C2H6OS","","환원제"],["실험 시약","글리세롤","Glycerol","C3H8O3","",""],
+ ["실험 시약","이미다졸","Imidazole","C3H4N2","","His-tag 정제"],["실험 시약","IPTG","IPTG","C9H18O5S","","발현 유도"],
+ ["실험 시약","X-gal","X-gal","C14H15BrClNO6","","청백 선별"],["실험 시약","앰피실린","Ampicillin","C16H19N3O4S","","항생제"],
+ ["실험 시약","카나마이신","Kanamycin","C18H36N4O11","","항생제"],["실험 시약","염화 나트륨","Sodium chloride","NaCl","",""],
+ ["실험 시약","염화 칼륨","Potassium chloride","KCl","",""],["실험 시약","염화 마그네슘 육수화물","MgCl₂·6H₂O","MgCl2·6H2O","","PCR·효소"],
+ ["실험 시약","염화 칼슘 이수화물","CaCl₂·2H₂O","CaCl2·2H2O","","형질 전환"],["실험 시약","인산이수소 칼륨","KH₂PO₄","KH2PO4","","인산 완충액"],
+ ["실험 시약","인산수소 이나트륨","Na₂HPO₄","Na2HPO4","","인산 완충액"],["실험 시약","아세트산 나트륨","Sodium acetate","C2H3NaO2","","DNA 침전"]
+];
+BIO.forEach(b=>{const k=b[1].replace(/\s|\(.*?\)/g,"");if(!NAMEMAP[k])NAMEMAP[k]=b[3]});
+const CATS=["전체","아미노산","핵산","대사물질","실험 시약"];let bioCat="전체";
+$("bioF").innerHTML=CATS.map(c=>`<button data-c="${c}" class="${c==="전체"?"on":""}">${c}</button>`).join("");
+$("bioF").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{bioCat=b.dataset.c;$("bioF").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));renderBio()}));
+function renderBio(){
+  const q=$("bioQ").value.trim().toLowerCase().replace(/\s/g,"");
+  const list=BIO.filter(b=>(bioCat==="전체"||b[0]===bioCat)&&(!q||[b[1],b[2],b[3],b[4],b[5]].join("|").toLowerCase().replace(/\s/g,"").includes(q)||b[4].split(" · ").some(x=>x.toLowerCase()===q)));
+  $("bioList").innerHTML=list.length?list.map(b=>{let mw="—",html=esc(b[3]);try{const i=formulaInfo(b[3]);mw=fmt(i.mw,2);html=i.html}catch(e){}
+    return`<div class="bio"><div class="top"><div><div class="ko">${esc(b[1])}</div><div class="en">${esc(b[2])}</div></div>${b[4]?`<span class="code">${esc(b[4])}</span>`:""}</div>
+    <div class="fm">${html}</div><div class="mw">${mw} g/mol</div>${b[5]?`<span class="tag">${esc(b[5])}</span>`:""}
+    <div class="acts"><button data-a="calc" data-f="${esc(b[3])}">용액 계산</button><button data-a="chem" data-f="${esc(b[3])}">화학식 칸에 넣기</button><button data-a="hwp" data-f="${esc(b[3])}">수식용 복사</button></div></div>`}).join("")
+    :`<div class="empty" style="grid-column:1/-1">찾는 물질이 없어요. 화학식을 알면 ‘분자량·용액’ 메뉴에 직접 써 보세요.</div>`;
+  $("bioList").querySelectorAll("[data-a]").forEach(b=>b.addEventListener("click",()=>{const f=b.dataset.f;
+    if(b.dataset.a==="calc"){$("mmIn").value=f;calcMM(true);goTab("calc",true);scrollTo({top:0})}
+    else if(b.dataset.a==="chem"){$("eq").value=f;render();goTab("chem",true);scrollTo({top:0})}
+    else copyText("rm "+termHWP({...parseTerm(f),coefStr:""}),b)}));
+}
+$("bioQ").addEventListener("input",renderBio);
+
+/* ---------- 수식 모음 ---------- */
+const FR=(a,b)=>`<span class="fr"><span>${a}</span><span>${b}</span></span>`;
+const EQS=[
+ ["미카엘리스–멘텐 식","효소 반응",`<i>v</i><sub>0</sub> = ${FR("<i>V</i><sub>max</sub>[S]","<i>K</i><sub>m</sub> + [S]")}`,"기질 농도 [S]에 따른 효소 반응 초기 속도예요.","v_{0} = {V_{max} [S]} over {K_{m} + [S]}"],
+ ["라인위버–버크 식","효소 반응",`${FR("1","<i>v</i><sub>0</sub>")} = ${FR("<i>K</i><sub>m</sub>","<i>V</i><sub>max</sub>")} · ${FR("1","[S]")} + ${FR("1","<i>V</i><sub>max</sub>")}`,"미카엘리스–멘텐 식의 역수 그래프로, Km과 Vmax를 구할 때 써요.","{1} over {v_{0}} = {K_{m}} over {V_{max}} cdot {1} over {[S]} + {1} over {V_{max}}"],
+ ["헨더슨–하셀바흐 식","완충 용액",`pH = p<i>K</i><sub>a</sub> + log ${FR("[A<sup>−</sup>]","[HA]")}`,"완충 용액의 pH를 산과 짝염기의 비로 구해요.","rm pH = p it K_{a} + log {[ rm A^{-} ]} over {[ rm HA ]}"],
+ ["하디–바인베르크 법칙","집단 유전",`<i>p</i><sup>2</sup> + 2<i>pq</i> + <i>q</i><sup>2</sup> = 1`,"두 대립유전자 빈도 p, q로 유전자형 빈도를 나타내요.","p^{2} + 2pq + q^{2} = 1"],
+ ["비어–람베르트 법칙","분광 분석",`<i>A</i> = <i>ε</i> <i>l</i> <i>c</i>`,"흡광도 A는 몰흡광계수 ε, 빛의 경로 l, 농도 c에 비례해요.","A = epsilon l c"],
+ ["깁스 자유 에너지","생체 에너지",`Δ<i>G</i> = Δ<i>H</i> − <i>T</i>Δ<i>S</i>`,"반응이 저절로 일어나는지(ΔG < 0) 판단해요.","DELTA G = DELTA H - T DELTA S"],
+ ["실제 조건의 ΔG","생체 에너지",`Δ<i>G</i> = Δ<i>G</i>°′ + <i>RT</i> ln ${FR("[C][D]","[A][B]")}`,"세포 안 실제 농도에서의 자유 에너지 변화예요.","DELTA G = DELTA G^{circ prime} + RT ln {[C][D]} over {[A][B]}"],
+ ["네른스트 식","막전위",`<i>E</i><sub>ion</sub> = ${FR("<i>RT</i>","<i>zF</i>")} ln ${FR("[ion]<sub>out</sub>","[ion]<sub>in</sub>")}`,"이온의 평형 전위를 막 안팎 농도로 구해요.","E_{ion} = {RT} over {zF} ln {[ion]_{out}} over {[ion]_{in}}"],
+ ["세균 증식","미생물",`<i>N<sub>t</sub></i> = <i>N</i><sub>0</sub> × 2<sup><i>t</i>/<i>g</i></sup>`,"세대 시간 g마다 두 배로 늘어나는 세포 수예요.","N_{t} = N_{0} TIMES 2^{t/g}"],
+ ["희석 공식","실험",`<i>C</i><sub>1</sub><i>V</i><sub>1</sub> = <i>C</i><sub>2</sub><i>V</i><sub>2</sub>`,"원액을 묽혀 원하는 농도를 만들 때 써요.","C_{1} V_{1} = C_{2} V_{2}"],
+ ["프라이머 Tm (Wallace)","분자 생물학",`<i>T</i><sub>m</sub> = 2(A + T) + 4(G + C)`,"짧은 프라이머(14 nt 미만)의 녹는점을 대략 구해요.","T_{m} = 2(A+T) + 4(G+C)"],
+ ["섀넌 엔트로피","생명정보",`<i>H</i> = −∑<sub><i>i</i></sub> <i>p<sub>i</sub></i> log<sub>2</sub> <i>p<sub>i</sub></i>`,"서열 위치의 다양성(보존 정도)을 비트로 나타내요. 서열 로고에 써요.","H = - sum _{i} p_{i} log _{2} p_{i}"],
+ ["베이즈 정리","생명정보",`<i>P</i>(<i>A</i>|<i>B</i>) = ${FR("<i>P</i>(<i>B</i>|<i>A</i>) <i>P</i>(<i>A</i>)","<i>P</i>(<i>B</i>)")}`,"관찰 결과로 가설의 확률을 고쳐 계산해요. 계통수·변이 탐지에 써요.","P(A|B) = {P(B|A) P(A)} over {P(B)}"],
+ ["주크스–캔터 거리","분자 진화",`<i>d</i> = −${FR("3","4")} ln(1 − ${FR("4","3")}<i>p</i>)`,"서열 차이 비율 p로 실제 치환 거리를 추정해요.","d = - {3} over {4} ln left( 1 - {4} over {3} p right)"],
+ ["Phred 품질 점수","시퀀싱",`<i>Q</i> = −10 log<sub>10</sub> <i>P</i>`,"염기 읽기 오류 확률 P를 점수로 바꿔요. Q30이면 오류 0.1%예요.","Q = -10 log _{10} P"],
+ ["E-value (BLAST)","서열 정렬",`<i>E</i> = <i>K m n</i> e<sup>−λ<i>S</i></sup>`,"우연히 점수 S 이상의 정렬이 나올 기대 횟수예요. 작을수록 의미 있어요.","E = K m n e^{- lambda S}"]
+];
+$("eqList").innerHTML=EQS.map((e,i)=>`<div class="eqc"><div class="nm">${e[0]}<small>${e[1]}</small></div><div class="render">${e[2]}</div><p class="desc">${e[3]}</p><code>${esc(e[4])}</code><div class="acts"><button class="primary" data-q="${i}">수식 편집기용 복사</button></div></div>`).join("");
+$("eqList").querySelectorAll("[data-q]").forEach(b=>b.addEventListener("click",()=>copyText(EQS[+b.dataset.q][4],b)));
+
+/* ---------- 진로·소식 ---------- */
+const TOPICS=[["생명정보학","bioinformatics OR computational biology"],["유전체","genomics AND sequencing"],["단일세포","single-cell RNA-seq"],["단백질 구조·AI","protein structure prediction deep learning"],["AI 신약개발","drug discovery machine learning"],["CRISPR 유전자 편집","CRISPR genome editing"],["마이크로바이옴","microbiome metagenomics"],["정밀 의료","precision medicine genomic data"]];
+let newsTopic=0,newsItems=[],newsCtl=null,newsLoaded=false;
+$("newsTopics").innerHTML=TOPICS.map((t,i)=>`<button data-t="${i}" class="${i===0?"on":""}">${t[0]}</button>`).join("");
+$("newsTopics").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{newsTopic=+b.dataset.t;$("newsQ").value="";
+  $("newsTopics").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));loadNews()}));
+const nmsg=(t,bad)=>{$("newsMsg").textContent=t;$("newsMsg").className="scanmsg"+(bad?" bad":"")};
+const ymd=d=>d.toISOString().slice(0,10);
+async function fromEuropePMC(q,signal){
+  const to=new Date(),from=new Date(Date.now()-30*864e5);
+  let query=`(${q}) AND FIRST_PDATE:[${ymd(from)} TO ${ymd(to)}]`;
+  if(!$("newsPre").checked)query+=" AND NOT SRC:PPR";
+  if($("newsOA").checked)query+=" AND OPEN_ACCESS:y";
+  const url="https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=15&resultType=lite&sort="+encodeURIComponent("FIRST_PDATE desc")+"&query="+encodeURIComponent(query);
+  const r=await fetch(url,{signal});if(!r.ok)throw new Error("epmc "+r.status);
+  const j=await r.json();
+  return(j.resultList?.result||[]).map(x=>({title:(x.title||"").replace(/<[^>]+>/g,""),authors:x.authorString||"",journal:x.source==="PPR"?(x.bookOrReportDetails?.publisher||"프리프린트"):(x.journalTitle||""),
+    date:x.firstPublicationDate||x.pubYear||"",pre:x.source==="PPR",oa:x.isOpenAccess==="Y",url:`https://europepmc.org/article/${x.source}/${x.id}`,doi:x.doi||""}));
+}
+async function fromPubMed(q,signal){
+  let term=`(${q}) AND ("last 30 days"[dp])`;if($("newsOA").checked)term+=" AND free full text[sb]";
+  const base="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/";
+  const s=await (await fetch(base+"esearch.fcgi?db=pubmed&retmode=json&retmax=15&sort=pub_date&term="+encodeURIComponent(term),{signal})).json();
+  const ids=s.esearchresult?.idlist||[];if(!ids.length)return[];
+  const d=await (await fetch(base+"esummary.fcgi?db=pubmed&retmode=json&id="+ids.join(","),{signal})).json();
+  return ids.map(id=>d.result?.[id]).filter(Boolean).map(x=>({title:x.title||"",authors:(x.authors||[]).map(a=>a.name).slice(0,6).join(", ")+((x.authors||[]).length>6?" 외":""),
+    journal:x.fulljournalname||x.source||"",date:x.sortpubdate?x.sortpubdate.slice(0,10).replace(/\//g,"-"):x.pubdate||"",pre:false,oa:false,url:`https://pubmed.ncbi.nlm.nih.gov/${x.uid}/`,doi:(x.articleids||[]).find(a=>a.idtype==="doi")?.value||""}));
+}
+async function loadNews(){
+  newsCtl?.abort();newsCtl=new AbortController();newsLoaded=true;
+  const q=$("newsQ").value.trim()||TOPICS[newsTopic][1];
+  $("newsList").innerHTML="";$("newsKo").hidden=true;
+  $("newsMsg").innerHTML='<span class="dots">최신 논문을 불러오고 있어요</span>';$("newsMsg").className="scanmsg";
+  let items=null,src="";
+  try{items=await fromEuropePMC(q,newsCtl.signal);src="Europe PMC"}catch(e){if(e.name==="AbortError")return}
+  if(items===null){try{items=await fromPubMed(q,newsCtl.signal);src="PubMed"}catch(e){if(e.name==="AbortError")return}}
+  if(items===null){nmsg("논문 정보를 불러오지 못했어요. 인터넷 연결을 확인하거나, 아래 ‘믿을 수 있는 사이트’에서 직접 찾아보세요.",true);return}
+  newsItems=items;
+  if(!items.length){nmsg("최근 30일 동안 이 주제의 논문을 찾지 못했어요. 다른 주제를 눌러 보세요.");return}
+  nmsg(`${src}에서 최근 논문 ${items.length}편을 불러왔어요. 제목을 누르면 원문 페이지로 가요.`);
+  $("newsKo").hidden=!(LS.get("chem-gemini-key")||"").trim();
+  renderNews();
+}
+function renderNews(ko){
+  $("newsList").innerHTML=newsItems.map((n,i)=>`<article class="news">
+    <div class="meta"><span>${esc(n.date)}</span>${n.pre?'<span class="badge pre">프리프린트</span>':""}${n.oa?'<span class="badge oa">무료 원문</span>':""}</div>
+    <a class="ttl" href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>
+    ${ko&&ko[i]?`<p class="ko">${esc(ko[i])}</p>`:""}
+    <p class="by">${esc(n.authors.length>120?n.authors.slice(0,120)+"…":n.authors)}</p>
+    <p class="jr">${esc(n.journal)}${n.doi?` · <a href="https://doi.org/${esc(n.doi)}" target="_blank" rel="noopener">DOI</a>`:""}</p>
+  </article>`).join("");
+}
+$("newsGo").addEventListener("click",loadNews);
+$("newsQ").addEventListener("keydown",e=>{if(e.key==="Enter")loadNews()});
+["newsPre","newsOA"].forEach(id=>$(id).addEventListener("change",()=>{if(newsLoaded)loadNews()}));
+$("newsKo").addEventListener("click",async()=>{
+  const key=(LS.get("chem-gemini-key")||"").trim();if(!key||!newsItems.length)return;
+  const b=$("newsKo");b.disabled=true;b.textContent="번역하는 중…";
+  const prompt="다음 생명과학 논문 제목들을 대학생이 이해하기 쉬운 자연스러운 한국어로 번역하세요. 전문 용어는 한국어(영어) 형태로 써도 좋아요. 번호 순서대로 한 줄에 하나씩, 번호 없이 번역문만 쓰세요.\n\n"+newsItems.map((n,i)=>`${i+1}. ${n.title}`).join("\n");
+  let txt=null;
+  for(const m of ["gemini-2.5-flash","gemini-flash-latest","gemini-flash-lite-latest"]){
+    try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+      const j=await r.json();if(!r.ok){if(r.status===400||r.status===401||r.status===403)break;continue}
+      txt=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("");break}catch(e){}
+  }
+  b.disabled=false;b.textContent="제목 한국어로 보기";
+  if(!txt){toast("번역하지 못했어요. Gemini 키나 사용량을 확인해 주세요.");return}
+  renderNews(txt.split(/\n+/).map(l=>l.replace(/^\s*\d+[.)]\s*/,"").trim()).filter(Boolean));
+});
+
+const JOBS=[
+ ["생물정보 분석가","병원·연구소·바이오 기업","NGS 같은 대용량 유전체 데이터를 분석해서 질병 관련 유전 변이를 찾아요.",["Linux","Python 또는 R","NGS 분석 도구(BWA, GATK 등)","통계"]],
+ ["유전체 데이터 과학자","유전체 분석 기업·제약사","유전체·전사체 데이터에 통계와 머신러닝을 써서 의미 있는 패턴을 찾아요.",["Python","머신러닝","통계","분자생물학"]],
+ ["AI 신약개발 연구원","제약·AI 바이오 기업","단백질 구조 예측, 분자 생성 모델로 신약 후보 물질을 찾아요.",["딥러닝(PyTorch)","단백질 구조","화학 정보학(RDKit)","Python"]],
+ ["헬스케어 데이터 분석가","병원·보험·디지털 헬스","진료 기록과 검사 데이터를 분석해 의료 서비스를 개선해요.",["SQL","통계","Python 또는 R","개인정보 보호 이해"]],
+ ["바이오 소프트웨어 개발자","바이오 IT 기업·연구소","연구자가 쓰는 분석 파이프라인과 데이터베이스, 웹 도구를 만들어요.",["Python","Git/GitHub","클라우드·Docker","데이터베이스"]],
+ ["연구원 (대학원 진학)","대학·국책 연구소","석·박사 과정에서 새로운 분석 방법을 연구하고 논문을 써요.",["영어 논문 읽기","연구 설계","프로그래밍","발표·글쓰기"]]
+];
+$("jobs").innerHTML=JOBS.map(j=>`<details class="job"><summary><span><b>${j[0]}</b><small>${j[1]}</small></span></summary><p>${j[2]}</p><div class="tags">${j[3].map(t=>`<span>${t}</span>`).join("")}</div></details>`).join("");
+
+const SKILLS=["Linux 명령어 기초","Python 기초 문법","R로 데이터 시각화","Git·GitHub 사용","SQL 기초","확률과 통계","분자생물학·유전학 기초","NGS 데이터 형식(FASTQ, BAM, VCF)","BLAST로 서열 검색","단백질 구조 보기(PDB)","머신러닝 기초","영어 논문 한 편 끝까지 읽기","Rosalind 문제 10개 풀기","나만의 분석 프로젝트 GitHub에 올리기"];
+let skillDone={};try{skillDone=JSON.parse(LS.get("chem-skills")||"{}")||{}}catch(e){skillDone={}}
+function renderSkills(){
+  $("skills").innerHTML=SKILLS.map((s,i)=>`<label class="chk skill"><input type="checkbox" data-k="${i}" ${skillDone[i]?"checked":""}> ${s}</label>`).join("");
+  const n=SKILLS.filter((_,i)=>skillDone[i]).length;$("skillPct").textContent=`${n} / ${SKILLS.length}`;$("skillBar").style.width=(n/SKILLS.length*100)+"%";
+  $("skills").querySelectorAll("input").forEach(c=>c.addEventListener("change",()=>{skillDone[c.dataset.k]=c.checked;LS.set("chem-skills",JSON.stringify(skillDone));renderSkills()}));
+}
+renderSkills();
+
+const CERTS=[["ADsP (데이터분석 준전문가)","데이터 분석 기초와 통계. 응시 자격 제한이 없어 저학년부터 도전하기 좋아요.","https://www.dataq.or.kr","데이터자격검정"],
+ ["SQLD (SQL 개발자)","데이터베이스와 SQL 활용. 데이터 다루는 직무에서 기본으로 봐요.","https://www.dataq.or.kr","데이터자격검정"],
+ ["빅데이터분석기사","국가기술자격. 데이터 수집부터 분석 모델링까지 다뤄요.","https://www.dataq.or.kr","데이터자격검정"],
+ ["정보처리기사","국가기술자격. 소프트웨어 개발 전반의 기초를 증명해요.","https://www.q-net.or.kr","Q-Net"]];
+$("certs").innerHTML=CERTS.map(c=>`<div class="cert"><b>${c[0]}</b><p>${c[1]}</p><a href="${c[2]}" target="_blank" rel="noopener">${c[3]} →</a></div>`).join("");
+
+const SITES=[["NCBI","미국 국립생물정보센터 · 서열, 유전자, PubMed","https://www.ncbi.nlm.nih.gov"],["EMBL-EBI","유럽 생물정보연구소 · 각종 데이터베이스와 도구","https://www.ebi.ac.uk"],
+ ["UniProt","단백질 서열과 기능 정보","https://www.uniprot.org"],["RCSB PDB","단백질 3D 구조","https://www.rcsb.org"],["AlphaFold DB","AI가 예측한 단백질 구조","https://alphafold.ebi.ac.uk"],
+ ["KOBIC","국가생명연구자원정보센터","https://www.kobic.re.kr"],["BRIC","생물학연구정보센터 · 국내 연구 소식·채용","https://www.ibric.org"],["KRIBB","한국생명공학연구원","https://www.kribb.re.kr"],
+ ["Rosalind","생물정보 문제를 풀며 코딩 연습","https://rosalind.info"],["커리어넷","진로 정보와 직업 탐색","https://www.career.go.kr"],["고용24","공공 채용 정보","https://www.work24.go.kr"]];
+$("sites").innerHTML=SITES.map(s=>`<a class="site" href="${s[2]}" target="_blank" rel="noopener"><b>${s[0]}</b><span>${s[1]}</span></a>`).join("");
+
+/* ---------- 시작 ---------- */
+calcMM(true);calcMol();calcSol();calcDil();calcBuf();renderBio();addMass();
+goTab(location.hash.slice(1));
+
+/* ---------- 앱 설치 ---------- */
+let deferredPrompt=null;
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;$("installBtn").hidden=false});
+addEventListener("appinstalled",()=>{$("installBtn").hidden=true;toast("앱을 설치했어요. 홈 화면에서 열 수 있어요.")});
+const isStandalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+if(!isStandalone&&isIOS)$("installBtn").hidden=false;
+$("installBtn").addEventListener("click",async()=>{
+  if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice.catch(()=>{});deferredPrompt=null;$("installBtn").hidden=true}
+  else if(isIOS)toast("Safari 아래쪽 공유 버튼(□↑) → ‘홈 화면에 추가’를 눌러 주세요.");
+  else toast("브라우저 메뉴(⋮)에서 ‘앱 설치’ 또는 ‘홈 화면에 추가’를 눌러 주세요.");
+});
+if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){
+  addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+
+</body>
+</html>
