@@ -144,8 +144,9 @@ textarea#aiAnswer:focus,#gkey:focus{outline:none;border-color:var(--accent)}
 .fitem .fbody{flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer}
 .fitem .n{font-size:12.5px;color:var(--muted)}
 .fitem.bad{border-color:var(--warn)}
-.found{grid-template-columns:1fr}
-.fitem .pv{white-space:normal;overflow:visible;font-size:18px;overflow-wrap:anywhere}
+.found{grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))}
+.fitem{align-items:flex-start}
+.fitem .pv{white-space:normal;overflow:visible;font-size:17px;overflow-wrap:anywhere;line-height:1.5}
 .fitem.bad .pv{font-family:var(--f-mono);font-size:13px;color:var(--warn)}
 .fitem button{padding:4px 8px;font-size:12px}
 .dots::after{content:"";animation:dots 1.2s steps(4) infinite}
@@ -321,6 +322,15 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
 .more{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 .more summary{font-size:13.5px;color:var(--muted);font-weight:500}
 .moregrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px;margin-top:10px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.thumbs:empty{display:none}
+.thumb{position:relative;width:96px;border:1.5px solid var(--line);border-radius:8px;overflow:hidden;background:var(--paper)}
+.thumb img{display:block;width:100%;height:72px;object-fit:cover}
+.thumb .no{position:absolute;top:4px;left:4px;background:var(--ink);color:var(--paper);font-size:11px;font-weight:700;border-radius:999px;padding:0 6px}
+.thumb .st{display:block;font-size:11px;text-align:center;padding:2px 0;color:var(--muted);font-weight:700}
+.thumb.reading{border-color:var(--accent)}.thumb.reading .st{color:var(--accent)}
+.thumb.done .st{color:var(--ok)}.thumb.fail{border-color:var(--warn)}.thumb.fail .st{color:var(--warn)}
+.thumb button{position:absolute;top:3px;right:3px;width:22px;height:22px;padding:0;border-radius:50%;font-size:11px;line-height:1;background:var(--card)}
 @media (max-width:520px){.out{grid-template-columns:1fr}.out button{grid-row:auto;grid-column:1;justify-self:start}.out .v{grid-column:1}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -386,21 +396,22 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
     </div>
 
     <div class="drop" id="drop">
-      <input type="file" id="photo" accept="image/*" hidden>
+      <input type="file" id="photo" accept="image/*" multiple hidden>
       <input type="file" id="photoCam" accept="image/*" capture="environment" hidden>
-      <img id="thumb" alt="올린 사진" hidden>
       <div class="dropmsg" id="dropmsg">
-        <b>사진을 고르면 바로 읽어요</b>
-        <span>여기를 누르거나, 사진을 끌어다 놓거나, Ctrl+V로 붙여 넣으세요.</span>
+        <b>사진을 고르면 바로 읽어요 · 여러 장 가능</b>
+        <span>여기를 누르거나, 사진 여러 장을 한꺼번에 끌어다 놓거나, Ctrl+V로 붙여 넣으세요.</span>
       </div>
     </div>
     <div class="inrow" style="margin-top:10px;align-items:center">
       <button id="camBtn">📷 카메라로 찍기</button>
       <button id="galBtn">🖼 앨범에서 고르기</button>
       <button class="primary" id="scan" disabled>🔍 다시 읽기</button>
+      <button id="clearPhotos" hidden>사진 모두 지우기</button>
       <button id="stopScan" hidden>멈추기</button>
     </div>
 
+    <div class="thumbs" id="thumbs"></div>
     <p class="scanmsg" id="scanmsg" aria-live="polite"></p>
     <div class="found" id="found"></div>
     <div class="inrow" id="foundActs" style="margin-top:10px" hidden>
@@ -423,7 +434,7 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
           <div class="inrow" style="align-items:center">
             <label for="gmodel" class="hint" style="margin:0">모델</label>
             <select id="gmodel">
-              <option value="auto">자동 (Gemini 3.8 Flash → 안 되면 다음 모델)</option>
+              <option value="auto">자동 (2.5 Flash → 3.8 Flash → Flash Lite)</option>
               <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
               <option value="gemini-2.5-flash">gemini-2.5-flash</option>
               <option value="gemini-flash-latest">gemini-flash-latest</option>
@@ -931,7 +942,7 @@ $("bal").addEventListener("click",doBalance);
 render();doBalance(true);renderList();
 
 /* ---------- 사진에서 화학식 찾기 (깃허브용) ---------- */
-let foundList=[],photoFile=null,scanCtl=null;
+let foundList=[],photoFile=null,scanCtl=null,photos=[],photoSeq=0,reading=false;
 const smsg=(t,bad)=>{$("scanmsg").textContent=t;$("scanmsg").className="scanmsg"+(bad?" bad":"")};
 const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
 
@@ -979,30 +990,47 @@ let sessKey="";
 function keyUI(){const k=getKey();$("keybox").hidden=!!k;$("keyState").textContent=k?"키 저장됨 (…"+k.slice(-4)+")":"저장된 키 없음";$("gkey").value=""}
 $("saveKey").addEventListener("click",()=>{const k=$("gkey").value.trim();if(!k){toast("키를 먼저 붙여 넣어 주세요.");return}
   if(!LS.set("chem-gemini-key",k)){sessKey=k;toast("이 브라우저는 저장이 안 돼서, 이번에만 쓸 수 있어요.")}else toast("키를 저장했어요. 이제 사진만 고르면 돼요.");
-  keyUI();updScan();if(photoFile)$("scan").click()});
+  keyUI();updScan();if(photos.length)readPhotos(false)});
 $("gkey").addEventListener("keydown",e=>{if(e.key==="Enter")$("saveKey").click()});
 $("delKey").addEventListener("click",()=>{LS.del("chem-gemini-key");sessKey="";keyUI();updScan();toast("키를 지웠어요.")});
 $("editKey").addEventListener("click",()=>{$("keybox").hidden=false;$("gkey").focus();$("photoSec").scrollIntoView({behavior:"smooth"})});
 const savedModel=LS.get("chem-gemini-model");if(savedModel&&[...$("gmodel").options].some(o=>o.value===savedModel))$("gmodel").value=savedModel;
 $("gmodel").addEventListener("change",()=>{LS.set("chem-gemini-model",$("gmodel").value);LS.del("chem-gemini-good")});
-function updScan(){$("scan").disabled=!(photoFile&&getKey());$("shareAI").disabled=!photoFile;$("copyImg").disabled=!photoFile}
+function updScan(){$("scan").disabled=!(photos.length&&getKey())||reading;$("shareAI").disabled=!photoFile;$("copyImg").disabled=!photoFile}
 keyUI();
 
-/* 사진 올리기 */
-function setPhoto(f){
-  if(!f||!/^image\//.test(f.type)){smsg("사진 파일(JPG, PNG)을 올려 주세요.",true);return}
-  photoFile=f;const t=$("thumb");try{if(t.src)URL.revokeObjectURL(t.src)}catch(e){}
-  t.src=URL.createObjectURL(f);t.hidden=false;
-  $("dropmsg").querySelector("b").textContent="다른 사진으로 바꾸기";
-  updScan();
-  if(getKey())$("scan").click();
+/* 사진 올리기 (여러 장) */
+function addPhotos(list){
+  const files=[...(list||[])].filter(f=>f&&/^image\//.test(f.type));
+  if(!files.length){smsg("사진 파일(JPG, PNG)을 올려 주세요.",true);return}
+  files.forEach(f=>photos.push({id:++photoSeq,file:f,url:URL.createObjectURL(f),status:"wait",items:[]}));
+  photoFile=photos[photos.length-1].file;
+  renderThumbs();updScan();
+  if(getKey())readPhotos(false);
   else{smsg("위 칸에 Gemini 키를 저장하면 바로 읽어요.",true);$("keybox").hidden=false;$("gkey").focus()}
 }
+function setPhoto(f){addPhotos([f])}
+const ST={wait:"대기",reading:"읽는 중",done:"완료",fail:"실패"};
+function renderThumbs(){
+  $("thumbs").innerHTML=photos.map((p,i)=>`<div class="thumb ${p.status}"><img src="${p.url}" alt="사진 ${i+1}"><span class="no">${i+1}</span><span class="st">${ST[p.status]}${p.status==="done"?" · "+p.items.length+"개":""}</span><button data-id="${p.id}" aria-label="사진 ${i+1} 빼기">✕</button></div>`).join("");
+  $("thumbs").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    const i=photos.findIndex(p=>p.id===+b.dataset.id);if(i<0)return;if(photos[i].status==="reading"){toast("읽는 중인 사진은 멈춘 뒤에 뺄 수 있어요.");return}
+    URL.revokeObjectURL(photos[i].url);photos.splice(i,1);photoFile=photos.length?photos[photos.length-1].file:null;renderThumbs();collectFound();updScan()}));
+  $("clearPhotos").hidden=!photos.length||reading;
+  $("dropmsg").querySelector("b").textContent=photos.length?`사진 ${photos.length}장 · 더 추가하려면 누르세요`:"사진을 고르면 바로 읽어요 · 여러 장 가능";
+}
+function collectFound(){
+  const seen=new Set();foundList=[];
+  photos.forEach((p,pi)=>{if(p.status!=="done")return;p.items.forEach(it=>{let k=it.eq.replace(/\s/g,"");try{k=toInput(parse(it.eq))}catch(e){}
+    if(seen.has(k))return;seen.add(k);foundList.push({...it,photo:pi+1})})});
+  if(foundList.length||photos.some(p=>p.status==="done"))renderFound();else{$("found").innerHTML="";$("foundActs").hidden=true}
+}
+$("clearPhotos").addEventListener("click",()=>{photos.forEach(p=>URL.revokeObjectURL(p.url));photos=[];photoFile=null;foundList=[];renderThumbs();$("found").innerHTML="";$("foundActs").hidden=true;smsg("");updScan()});
 $("drop").tabIndex=0;
 $("drop").addEventListener("click",()=>$("photo").click());
 $("drop").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("photo").click()}});
-$("photo").addEventListener("change",e=>setPhoto(e.target.files[0]));
-$("photoCam").addEventListener("change",e=>setPhoto(e.target.files[0]));
+$("photo").addEventListener("change",e=>{addPhotos(e.target.files);e.target.value=""});
+$("photoCam").addEventListener("change",e=>{addPhotos(e.target.files);e.target.value=""});
 $("camBtn").addEventListener("click",()=>$("photoCam").click());
 $("copyImg").addEventListener("click",async e=>{
   const btn=e.currentTarget;if(!photoFile)return;
@@ -1019,24 +1047,24 @@ $("galBtn").addEventListener("click",()=>$("photo").click());
 $("shareAI").addEventListener("click",async()=>{
   if(!photoFile)return;
   try{await navigator.clipboard.writeText(PROMPT_LINES)}catch(e){copyText(PROMPT_LINES,null)}
-  const f=new File([photoFile],photoFile.name||"textbook.jpg",{type:photoFile.type||"image/jpeg"});
-  if(navigator.canShare&&navigator.canShare({files:[f]})){
-    try{await navigator.share({files:[f]});
+  const fs=photos.map((p,i)=>new File([p.file],p.file.name||`textbook-${i+1}.jpg`,{type:p.file.type||"image/jpeg"}));const f=fs[0];
+  if(navigator.canShare&&navigator.canShare({files:fs})){
+    try{await navigator.share({files:fs});
       smsg("① 사진이 올라갔는지 확인 ② 입력 칸을 길게 눌러 ‘붙여넣기’ ③ 보내기 ④ 답을 복사해 아래 ③ 칸에 붙여 넣으세요.")}
     catch(err){if(err&&err.name!=="AbortError")smsg("보내지 못했어요. AI 앱에서 사진을 직접 올리고, 복사해 둔 문장을 붙여 넣어 주세요.",true)}
   }else smsg("이 기기에서는 사진을 바로 보낼 수 없어요. 질문 문장은 복사해 두었어요. AI 사이트에서 ＋(첨부) 버튼으로 사진을 먼저 올리고, 문장을 붙여 넣어 보내세요.");
 });
 ["dragenter","dragover"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("over")}));
 ["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("over")}));
-$("drop").addEventListener("drop",e=>setPhoto(e.dataTransfer.files[0]));
+$("drop").addEventListener("drop",e=>addPhotos(e.dataTransfer.files));
 document.addEventListener("paste",e=>{if(e.target&&(e.target.id==="aiAnswer"||e.target.id==="eq"||e.target.id==="gkey"))return;
-  const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));if(it){e.preventDefault();setPhoto(it.getAsFile())}});
+  const its=[...(e.clipboardData?.items||[])].filter(i=>i.type.startsWith("image/"));if(its.length){e.preventDefault();addPhotos(its.map(i=>i.getAsFile()))}});
 
 function shrink(file){ // 긴 변 1600px JPEG로 줄여서 base64
   return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{
-    const s=Math.min(1,1600/Math.max(img.width,img.height));const c=document.createElement("canvas");
+    const s=Math.min(1,1280/Math.max(img.width,img.height));const c=document.createElement("canvas");
     c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-    res(c.toDataURL("image/jpeg",0.9).split(",")[1])};img.onerror=()=>rej(new Error("img"));img.src=URL.createObjectURL(file)});
+    res(c.toDataURL("image/jpeg",0.85).split(",")[1])};img.onerror=()=>rej(new Error("img"));img.src=URL.createObjectURL(file)});
 }
 const MODEL_NAME={"gemini-3.8-flash":"Gemini 3.8 Flash","gemini-flash-latest":"Gemini Flash (최신)","gemini-2.5-flash":"Gemini 2.5 Flash","gemini-flash-lite-latest":"Gemini Flash Lite"};
 const isKeyErr=e=>e&&(e.status===401||e.status===403||(e.status===400&&/api key|API_KEY/i.test(e.message)));
@@ -1057,49 +1085,67 @@ async function askWithTimeout(model,key,b64,outer,ms,fast){
   finally{clearTimeout(t);outer.removeEventListener("abort",onAbort)}
 }
 let scanTimer=null;
-$("scan").addEventListener("click",async()=>{
-  const key=getKey();if(!key||!photoFile)return;
-  scanCtl=new AbortController();$("scan").disabled=true;$("stopScan").hidden=false;$("foundActs").hidden=true;$("found").innerHTML="";
-  const t0=Date.now();let curModel="";
-  const tick=()=>{$("scanmsg").innerHTML=`<span class="dots">${esc(MODEL_NAME[curModel]||curModel)}로 읽는 중</span> · ${Math.round((Date.now()-t0)/1000)}초 <span class="hint">(보통 5~20초)</span>`;$("scanmsg").className="scanmsg"};
+async function readOne(p,key,models,pick,t0,label){
+  const b64=await shrink(p.file);let last=null;
+  for(const m of models){
+    label.model=m;
+    try{
+      let text;
+      try{text=await askWithTimeout(m,key,b64,scanCtl.signal,pick==="auto"?25000:60000,true)}
+      catch(e){if(e.status===400&&!isKeyErr(e)&&/gemini-3/.test(m))text=await askWithTimeout(m,key,b64,scanCtl.signal,25000,false);else throw e}
+      if(pick==="auto")LS.set("chem-gemini-good",m);
+      return{text,model:m};
+    }catch(e){if(e.name==="AbortError"&&!e.timeout)throw e;last=e;if(isKeyErr(e)||e.status===429&&models.length===1)break}
+  }
+  throw last;
+}
+async function readPhotos(all){
+  const key=getKey();if(!key||!photos.length)return;
+  if(reading){if(!all)return;scanCtl?.abort()}
+  if(all)photos.forEach(p=>{p.status="wait";p.items=[]});
+  const todo=photos.filter(p=>p.status==="wait"||p.status==="fail");if(!todo.length){collectFound();return}
+  reading=true;scanCtl=new AbortController();$("stopScan").hidden=false;updScan();renderThumbs();
+  const t0=Date.now(),label={model:"",i:0,n:todo.length};
+  const tick=()=>{$("scanmsg").innerHTML=`<span class="dots">사진 ${label.i}/${label.n} · ${esc(MODEL_NAME[label.model]||label.model)}로 읽는 중</span> · ${Math.round((Date.now()-t0)/1000)}초`;$("scanmsg").className="scanmsg"};
   clearInterval(scanTimer);scanTimer=setInterval(tick,1000);
-  const pick=$("gmodel").value;let models=pick==="auto"?["gemini-3.8-flash","gemini-flash-latest","gemini-2.5-flash","gemini-flash-lite-latest"]:[pick];
-  const good=LS.get("chem-gemini-good");if(pick==="auto"&&good&&models.includes(good))models=[good,...models.filter(m=>m!==good)];
+  const pick=$("gmodel").value;let models=pick==="auto"?["gemini-2.5-flash","gemini-3.8-flash","gemini-flash-lite-latest"]:[pick];
+  let lastErr=null,usedModel="";
   try{
-    const b64=await shrink(photoFile);let text=null,last=null;
-    for(const m of models){
-      curModel=m;tick();
-      try{
-        try{text=await askWithTimeout(m,key,b64,scanCtl.signal,40000,true)}
-        catch(e){if(e.status===400&&!isKeyErr(e)&&/gemini-3/.test(m))text=await askWithTimeout(m,key,b64,scanCtl.signal,40000,false);else throw e}
-        if(pick==="auto")LS.set("chem-gemini-good",m);break;
-      }catch(e){if(e.name==="AbortError"&&!e.timeout)throw e;last=e;if(isKeyErr(e))break}
+    for(const p of todo){
+      if(!photos.includes(p))continue;
+      label.i++;
+      const good=LS.get("chem-gemini-good");if(pick==="auto"&&good&&models.includes(good))models=[good,...models.filter(m=>m!==good)];
+      p.status="reading";renderThumbs();tick();
+      try{const r=await readOne(p,key,models,pick,t0,label);p.items=readAIText(r.text);p.status="done";usedModel=r.model}
+      catch(e){if(e&&e.name==="AbortError"&&!e.timeout){p.status="wait";throw e}p.status="fail";lastErr=e;if(isKeyErr(e)){renderThumbs();break}}
+      renderThumbs();collectFound();
     }
-    if(text===null)throw last;
-    foundList=readAIText(text);renderFound();
-    if(foundList.length)$("scanmsg").textContent+=` (${MODEL_NAME[curModel]||curModel} · ${Math.round((Date.now()-t0)/1000)}초)`;
+    const fails=photos.filter(p=>p.status==="fail").length;
+    if(fails&&!foundList.length)throw lastErr;
+    if(foundList.length)$("scanmsg").textContent=`사진 ${photos.filter(p=>p.status==="done").length}장에서 ${foundList.length}개를 찾았어요${fails?` · ${fails}장은 실패 (‘다시 읽기’로 다시 시도)`:""}. (${MODEL_NAME[usedModel]||usedModel} · ${Math.round((Date.now()-t0)/1000)}초)`;
   }catch(e){
-    if(e&&e.name==="AbortError")smsg("멈췄어요.");
-    else if(e&&e.message==="img")smsg("이 사진은 열 수 없어요. 다른 사진(JPG, PNG)으로 올려 주세요.",true);
+    if(e&&e.name==="AbortError")smsg("멈췄어요. ‘다시 읽기’를 누르면 남은 사진을 이어서 읽어요.");
+    else if(e&&e.message==="img")smsg("열 수 없는 사진이 있어요. 다른 사진(JPG, PNG)으로 올려 주세요.",true);
     else if(isKeyErr(e))smsg("API 키가 맞지 않아요. ‘설정 · 키가 없을 때’에서 키를 다시 저장해 주세요.",true);
-    else if(e&&e.timeout)smsg("Gemini가 너무 오래 답하지 않아요. 잠시 뒤 ‘다시 읽기’를 누르거나, 설정에서 모델을 gemini-2.5-flash로 바꿔 보세요.",true);
+    else if(e&&e.timeout)smsg("Gemini가 너무 오래 답하지 않아요. 잠시 뒤 ‘다시 읽기’를 누르거나, 설정에서 모델을 바꿔 보세요.",true);
     else if(e&&e.status===429)smsg("무료 사용량을 다 썼어요. 1분쯤 뒤에 ‘다시 읽기’를 누르세요.",true);
     else if(e&&e.status)smsg(`Gemini가 답하지 못했어요 (${e.status}). 잠시 뒤에 다시 눌러 주세요.`,true);
     else smsg("인터넷 연결을 확인하고 다시 눌러 주세요.",true);
-  }finally{clearInterval(scanTimer);updScan();$("stopScan").hidden=true}
-});
+  }finally{clearInterval(scanTimer);reading=false;$("stopScan").hidden=true;renderThumbs();updScan()}
+}
+$("scan").addEventListener("click",()=>{const pending=photos.some(p=>p.status==="wait"||p.status==="fail");readPhotos(!pending)});
 $("stopScan").addEventListener("click",()=>scanCtl?.abort());
 
 /* 찾은 식 보여주기 */
 function renderFound(){
   const F=$("found");F.innerHTML="";$("foundActs").hidden=true;
-  if(!foundList.length){smsg("화학식을 찾지 못했어요. 사진을 가까이 찍거나, AI의 답이 ‘이름 | 식’ 모양인지 확인해 주세요.",true);return}
+  if(!foundList.length){if(!reading)smsg("화학식을 찾지 못했어요. 사진을 가까이 찍거나, AI의 답이 ‘이름 | 식’ 모양인지 확인해 주세요.",true);return}
   let okN=0;
   foundList.forEach(f=>{
     let o=null,norm=f.eq;try{const p=parse(f.eq);o=build(p);norm=toInput(p);okN++}catch(e){}
     const d=document.createElement("div");d.className="fitem"+(o?"":" bad");
     d.innerHTML=`<div class="fbody" title="위 칸으로 불러오기"><span class="n"></span><span class="pv"></span></div><button>${o?"＋ 모아두기":"고쳐 쓰기"}</button>`;
-    d.querySelector(".n").textContent=f.name||(o?"찾은 식":"확인이 필요한 식");
+    d.querySelector(".n").textContent=(photos.length>1&&f.photo?`사진 ${f.photo} · `:"")+(f.name||(o?"찾은 식":"확인이 필요한 식"));
     if(o)d.querySelector(".pv").innerHTML=o.html;else d.querySelector(".pv").textContent=f.eq;
     const load=()=>{$("eq").value=norm;render();$("eq").focus();scrollTo({top:0,behavior:"smooth"})};
     d.querySelector(".fbody").addEventListener("click",load);
@@ -1107,7 +1153,7 @@ function renderFound(){
       if(!saved.includes(norm)){saved.push(norm);store();renderList()}toast("모아둔 식에 추가했어요.")});
     F.appendChild(d);
   });
-  smsg(`${foundList.length}개를 찾았어요. 아래 버튼으로 한 번에 복사하거나, 식을 눌러 하나씩 확인하세요.`);
+  if(!reading)smsg(`${foundList.length}개를 찾았어요. 아래 버튼으로 한 번에 복사하거나, 식을 눌러 하나씩 확인하세요.`);
   $("foundActs").hidden=okN===0;
 }
 function foundBuilt(){return foundList.map(f=>{try{return build(parse(f.eq))}catch(e){return null}}).filter(Boolean)}
@@ -1420,7 +1466,7 @@ let koRun=0;
 function showKo(i,t,bad){const el=document.getElementById("ko"+i);if(!el)return;el.textContent=t;el.classList.toggle("fail",!!bad)}
 async function koGemini(list,key){
   const prompt="다음 생명과학 논문 제목들을 생명정보공학과 대학생이 읽기 쉬운 자연스러운 한국어로 번역하세요. 유전자·단백질 이름, 약어(CRISPR, RNA-seq 등)는 그대로 두세요. 번호 순서대로 한 줄에 하나씩, 번호 없이 번역문만 쓰세요.\n\n"+list.map((t,i)=>`${i+1}. ${t}`).join("\n");
-  for(const m of ["gemini-3.8-flash","gemini-flash-latest","gemini-2.5-flash","gemini-flash-lite-latest"]){
+  for(const m of ["gemini-2.5-flash","gemini-3.8-flash","gemini-flash-lite-latest"]){
     try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
       const j=await r.json();if(!r.ok){if(r.status===400||r.status===401||r.status===403)return null;continue}
       const lines=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").split(/\n+/).map(l=>l.replace(/^\s*\d+[.)]\s*/,"").trim()).filter(Boolean);
