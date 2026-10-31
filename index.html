@@ -251,7 +251,9 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
 .badge.oa{background:var(--ok-bg);color:var(--ok)}
 .news .ttl{font-weight:700;color:var(--ink);text-decoration:none;line-height:1.45;overflow-wrap:anywhere}
 .news .ttl:hover{color:var(--accent);text-decoration:underline}
-.news .ko{margin:0;font-size:14px;color:var(--accent);font-weight:500}
+.news .ko{margin:0;font-size:14.5px;color:var(--accent);font-weight:500;line-height:1.5;padding-left:10px;border-left:2px solid var(--tile)}
+.news .ko.fail{color:var(--muted);font-weight:400;font-size:12.5px}
+.news .ko .wait{color:var(--muted);font-weight:400;font-size:12.5px}
 .news .by,.news .jr{margin:0;font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
 .news .jr a{color:var(--accent)}
 .jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:8px;margin-top:6px}
@@ -275,15 +277,40 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
 .site b{color:var(--accent)}
 .site span{font-size:12.5px;color:var(--muted)}
 
-.kakao{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-radius:12px;background:#FEE500;color:#191600}
-.kakao span{font-size:13.5px}
-.kakao button{border-color:#191600;background:transparent;color:#191600}
+.kakao{display:flex;align-items:center;gap:6px;padding:5px 6px 5px 12px;border-radius:999px;background:#FEE500;color:#191600;font-size:12.5px;font-weight:700;flex-wrap:nowrap;overflow-x:auto}
+.kakao span{flex:1;min-width:max-content}
+.kakao button{flex:none;font-size:12px;padding:3px 10px;border-radius:999px;border-width:1px;border-color:#191600;background:transparent;color:#191600}
 .kakao button.primary{background:#191600;color:#FEE500}
 .ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px;margin-top:14px}
 .way{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .way>b small{font-weight:400;color:var(--muted);font-size:12px;margin-left:4px}
 .way p{margin:0;font-size:13.5px;color:var(--muted)}
 .keyset summary{font-size:13.5px;color:var(--muted);font-weight:500}
+.h3{font-size:15px;margin:18px 0 6px;font-weight:700}
+.h3 small{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px}
+.jobsites{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));gap:8px;margin-top:10px}
+.jobsite{display:flex;flex-direction:column;gap:1px;padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink)}
+.jobsite:hover{border-color:var(--accent)}
+.jobsite b{color:var(--accent);font-size:14px}
+.jobsite span{font-size:12px;color:var(--muted)}
+.remote{display:flex;flex-direction:column;gap:8px}
+.rjob{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink);min-width:0}
+.rjob:hover{border-color:var(--accent)}
+.rjob .logo{width:44px;height:44px;border-radius:8px;background:var(--tile);display:grid;place-items:center;font-weight:700;color:var(--accent);overflow:hidden}
+.rjob .logo img{width:100%;height:100%;object-fit:contain;background:#fff}
+.rjob .t{font-weight:700;font-size:14px;overflow-wrap:anywhere}
+.rjob .m{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.orgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:8px;margin-top:10px}
+.org{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.org a.n{font-weight:700;color:var(--ink);text-decoration:none}
+.org a.n:hover{color:var(--accent);text-decoration:underline}
+.org p{margin:0;font-size:12.5px;color:var(--muted)}
+.org .acts{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.org .acts a{font-size:12px;font-weight:700;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.news .src2{font-size:12px;color:var(--muted)}
+
+.mini{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.mini button{padding:4px 10px;font-size:12.5px}
 @media (max-width:520px){.out{grid-template-columns:1fr}.out button{grid-row:auto;grid-column:1;justify-self:start}.out .v{grid-column:1}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -293,9 +320,8 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
 
 <div class="wrap">
   <div class="kakao" id="kakao" hidden>
-    <b>카카오톡 안에서 열려 있어요</b>
-    <span>앱으로 설치하려면 크롬이나 Safari에서 열어야 해요.</span>
-    <div class="inrow"><button class="primary" id="kakaoOpen">브라우저로 열기</button><button id="kakaoCopy">주소 복사</button></div>
+    <span>카톡에선 설치가 안 돼요</span>
+    <button class="primary" id="kakaoOpen">브라우저로 열기</button><button id="kakaoCopy">주소 복사</button>
   </div>
   <nav class="nav" aria-label="메뉴">
     <a href="#chem" aria-current="page">⚗︎ 화학식</a>
@@ -303,7 +329,8 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
     <a href="#seq">🧬 서열 도구</a>
     <a href="#bio">📖 생체분자</a>
     <a href="#eqs">∑ 수식 모음</a>
-    <a href="#news">📰 진로·소식</a>
+    <a href="#papers">📄 논문</a>
+    <a href="#career">🧭 진로</a>
     <button id="installBtn" class="install" hidden>⬇ 앱 설치</button>
   </nav>
   <header>
@@ -355,11 +382,13 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
     <div class="ways">
       <div class="way">
         <b>② 키 없이 읽기 <small>누구나 · 무료</small></b>
-        <p>사진과 질문 문장을 ChatGPT · Gemini · Claude 앱으로 보내요. 앱에서 문장을 붙여 넣고 보낸 뒤, 답을 복사해 ③에 붙여 넣으세요.</p>
-        <div class="inrow">
-          <button class="primary" id="shareAI" disabled>📤 AI 앱으로 보내기</button>
-          <button id="copyPrompt">문장만 복사</button>
-        </div>
+        <p><b>사진과 질문 문장을 둘 다</b> AI에 넣어야 해요. 문장만 보내면 “사진을 첨부해 주세요”라고 답해요.</p>
+        <ol class="mini">
+          <li><button id="copyImg" disabled>🖼 사진 복사</button> → AI 입력 칸에 <kbd>Ctrl</kbd>+<kbd>V</kbd> (사진이 붙었는지 확인)</li>
+          <li><button id="copyPrompt">📋 문장 복사</button> → 같은 칸에 한 번 더 <kbd>Ctrl</kbd>+<kbd>V</kbd> → 보내기</li>
+          <li>AI 답을 복사해서 아래 ③ 칸에 붙여 넣기</li>
+        </ol>
+        <div class="inrow"><button class="primary" id="shareAI" disabled>📤 휴대폰: 사진을 AI 앱으로 보내기</button></div>
         <div class="links">
           <a href="https://chatgpt.com" target="_blank" rel="noopener">ChatGPT</a>
           <a href="https://gemini.google.com" target="_blank" rel="noopener">Gemini</a>
@@ -570,13 +599,13 @@ ATGGCTAGCAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAA
     <div class="eqgrid" id="eqList"></div>
   </div>
   <!-- ===== 진로·소식 ===== -->
-  <div class="tabpane" id="pane-news" hidden>
+  <div class="tabpane" id="pane-papers" hidden>
     <section class="card">
       <div class="listhead" style="margin-bottom:6px">
         <h2>최신 연구 소식</h2>
         <span class="src">출처: Europe PMC · PubMed</span>
       </div>
-      <p class="sub">전 세계 생명과학 논문 데이터베이스에서 최근 30일 동안 나온 논문을 자동으로 불러와요.</p>
+      <p class="sub">전 세계 생명과학 논문 데이터베이스에서 최근 30일 동안 나온 논문을 자동으로 불러오고, 제목을 한국어로 번역해 같이 보여 줘요.</p>
       <div class="filters" id="newsTopics"></div>
       <div class="inrow" style="margin-top:10px;align-items:center">
         <input id="newsQ" class="fin" type="search" placeholder="직접 검색 (영어, 예: CRISPR base editing)" aria-label="논문 검색">
@@ -585,11 +614,40 @@ ATGGCTAGCAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAA
       <div class="inrow" style="margin-top:8px;align-items:center;gap:14px">
         <label class="chk"><input type="checkbox" id="newsPre" checked> 프리프린트(심사 전 논문) 포함</label>
         <label class="chk"><input type="checkbox" id="newsOA"> 무료로 읽을 수 있는 것만</label>
-        <button id="newsKo" hidden>제목 한국어로 보기</button>
+        <label class="chk"><input type="checkbox" id="newsKoOn" checked> 한국어 제목 같이 보기</label>
       </div>
       <p class="scanmsg" id="newsMsg" aria-live="polite"></p>
     </section>
     <div class="newslist" id="newsList"></div>
+
+  </div>
+
+  <!-- ===== 진로 ===== -->
+  <div class="tabpane" id="pane-career" hidden>
+    <section class="card">
+      <div class="listhead" style="margin-bottom:6px"><h2>바이오 업계 소식</h2><span class="src">출처: GDELT 뉴스 데이터베이스</span></div>
+      <p class="sub">국내 언론에 최근 2주 동안 나온 바이오·제약·유전체 기업 기사를 자동으로 모아 보여 줘요.</p>
+      <div class="filters" id="bizTopics"></div>
+      <p class="scanmsg" id="bizMsg" aria-live="polite"></p>
+      <div class="newslist" id="bizList"></div>
+    </section>
+
+    <section class="card">
+      <div class="listhead" style="margin-bottom:6px"><h2>채용 소식</h2><span class="src">해외·원격 채용: Remotive</span></div>
+      <p class="sub">국내 채용은 키워드를 고르면 각 채용 사이트의 최신 검색 결과로 바로 가요.</p>
+      <div class="filters" id="jobKeys"></div>
+      <div class="jobsites" id="jobSites"></div>
+      <h3 class="h3">해외·원격 근무 채용 <small>자동 업데이트</small></h3>
+      <p class="scanmsg" id="remoteMsg" aria-live="polite"></p>
+      <div class="remote" id="remoteList"></div>
+    </section>
+
+    <section class="card">
+      <h2>주요 기업 · 연구기관</h2>
+      <p class="sub">이름을 누르면 누리집으로, ‘채용’을 누르면 그 회사의 채용 검색 결과로 가요.</p>
+      <div class="filters" id="orgF"></div>
+      <div class="orgs" id="orgs"></div>
+    </section>
 
     <section class="card">
       <h2>진로 길잡이</h2>
@@ -611,7 +669,7 @@ ATGGCTAGCAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAA
     </section>
 
     <section class="card">
-      <h2>믿을 수 있는 사이트</h2>
+      <h2>공부·진로에 도움 되는 사이트</h2>
       <div class="sites" id="sites"></div>
     </section>
   </div>
@@ -867,7 +925,7 @@ const smsg=(t,bad)=>{$("scanmsg").textContent=t;$("scanmsg").className="scanmsg"
 const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
 
 /* AI 답 읽기 */
-const PROMPT_LINES=`이 사진은 대학 전공 교재(일반화학·생화학·분자생물학 등) 또는 강의 자료입니다. 사진에 나오는 화학 반응식과 화학식을 모두 찾아 주세요.
+const PROMPT_LINES=`첨부한 사진은 대학 전공 교재(일반화학·생화학·분자생물학 등) 또는 강의 자료입니다. 사진에 나오는 화학 반응식과 화학식을 모두 찾아 주세요.
 한 줄에 하나씩, "이름 | 식" 형식으로만 답하고 다른 설명은 쓰지 마세요.
 식 쓰는 규칙:
 - 아래 첨자 숫자는 그냥 숫자로 (H2SO4), 계수는 앞에 숫자로 (2H2O)
@@ -898,7 +956,7 @@ function readAIText(txt){
   });
   return out;
 }
-$("copyPrompt").addEventListener("click",e=>copyText(PROMPT_LINES,e.currentTarget));
+$("copyPrompt").addEventListener("click",e=>{copyText(PROMPT_LINES,e.currentTarget);if(photoFile)smsg("문장을 복사했어요. 사진이 붙은 입력 칸에 Ctrl+V 하고 보내세요.")});
 $("parseAnswer").addEventListener("click",()=>{
   const t=$("aiAnswer").value;if(!t.trim()){smsg("AI의 답을 먼저 붙여 넣어 주세요.",true);return}
   foundList=readAIText(t);renderFound();
@@ -912,7 +970,7 @@ $("delKey").addEventListener("click",()=>{LS.del("chem-gemini-key");$("gkey").va
 $("gkey").addEventListener("input",updScan);
 const savedModel=LS.get("chem-gemini-model");if(savedModel)$("gmodel").value=savedModel;
 $("gmodel").addEventListener("change",()=>LS.set("chem-gemini-model",$("gmodel").value));
-function updScan(){$("scan").disabled=!(photoFile&&$("gkey").value.trim());$("shareAI").disabled=!photoFile}
+function updScan(){$("scan").disabled=!(photoFile&&$("gkey").value.trim());$("shareAI").disabled=!photoFile;$("copyImg").disabled=!photoFile}
 
 /* 사진 올리기 */
 function setPhoto(f){
@@ -920,7 +978,7 @@ function setPhoto(f){
   photoFile=f;const t=$("thumb");try{if(t.src)URL.revokeObjectURL(t.src)}catch(e){}
   t.src=URL.createObjectURL(f);t.hidden=false;
   $("dropmsg").querySelector("b").textContent="📷 다른 사진으로 바꾸기";
-  updScan();smsg($("gkey").value.trim()?"사진을 골랐어요. ‘바로 읽기’를 누르세요.":"사진을 골랐어요. ‘AI 앱으로 보내기’를 누르세요.");$("dropmsg").querySelector("b").textContent="① 다른 사진으로 바꾸기";
+  updScan();smsg($("gkey").value.trim()?"사진을 골랐어요. ‘바로 읽기’를 누르세요.":"사진을 골랐어요. ‘사진 복사’ → ‘문장 복사’ 순서로 AI에 붙여 넣으세요.");$("dropmsg").querySelector("b").textContent="① 다른 사진으로 바꾸기";
 }
 $("drop").tabIndex=0;
 $("drop").addEventListener("click",()=>$("photo").click());
@@ -928,15 +986,27 @@ $("drop").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.prev
 $("photo").addEventListener("change",e=>setPhoto(e.target.files[0]));
 $("photoCam").addEventListener("change",e=>setPhoto(e.target.files[0]));
 $("camBtn").addEventListener("click",()=>$("photoCam").click());
+$("copyImg").addEventListener("click",async e=>{
+  const btn=e.currentTarget;if(!photoFile)return;
+  try{
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(photoFile)});
+    const sc=Math.min(1,2000/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    const blob=await new Promise(r=>c.toBlob(r,"image/png"));
+    await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+    flash(btn);smsg("사진을 복사했어요. AI 입력 칸에 Ctrl+V 하고, 이어서 ‘문장 복사’를 누르세요.");
+  }catch(err){smsg("이 브라우저에서는 사진을 복사할 수 없어요. AI 사이트의 ＋(첨부) 버튼으로 사진을 직접 올려 주세요.",true)}
+});
 $("galBtn").addEventListener("click",()=>$("photo").click());
-$("shareAI").addEventListener("click",()=>{
+$("shareAI").addEventListener("click",async()=>{
   if(!photoFile)return;
-  copyText(PROMPT_LINES,null);
+  try{await navigator.clipboard.writeText(PROMPT_LINES)}catch(e){copyText(PROMPT_LINES,null)}
   const f=new File([photoFile],photoFile.name||"textbook.jpg",{type:photoFile.type||"image/jpeg"});
-  const data={files:[f],text:PROMPT_LINES};
   if(navigator.canShare&&navigator.canShare({files:[f]})){
-    navigator.share(data).then(()=>smsg("AI 앱에서 문장을 붙여 넣어 보내고, 받은 답을 복사해 ③에 붙여 넣으세요.")).catch(err=>{if(err&&err.name!=="AbortError")smsg("보내지 못했어요. ‘문장만 복사’ 후 AI 앱에 사진을 직접 올려 주세요.",true)});
-  }else smsg("이 기기에서는 바로 보낼 수 없어요. 질문 문장을 복사했으니, ChatGPT·Gemini·Claude에 사진을 올리고 문장을 붙여 넣어 보내세요.");
+    try{await navigator.share({files:[f]});
+      smsg("① 사진이 올라갔는지 확인 ② 입력 칸을 길게 눌러 ‘붙여넣기’ ③ 보내기 ④ 답을 복사해 아래 ③ 칸에 붙여 넣으세요.")}
+    catch(err){if(err&&err.name!=="AbortError")smsg("보내지 못했어요. AI 앱에서 사진을 직접 올리고, 복사해 둔 문장을 붙여 넣어 주세요.",true)}
+  }else smsg("이 기기에서는 사진을 바로 보낼 수 없어요. 질문 문장은 복사해 두었어요. AI 사이트에서 ＋(첨부) 버튼으로 사진을 먼저 올리고, 문장을 붙여 넣어 보내세요.");
 });
 ["dragenter","dragover"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("over")}));
 ["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("over")}));
@@ -1014,11 +1084,11 @@ const fHTML=f=>esc(f).replace(/(\d+)/g,"<sub>$1</sub>");
 function formulaInfo(str){const t=parseTerm(str);return{t,atoms:t.atoms,mw:molarMass(t.atoms),html:termHTML({...t,coefStr:""})}}
 
 /* ---------- 메뉴(탭) ---------- */
-const TABS=["chem","calc","seq","bio","eqs","news"];
-function goTab(name,push){if(!TABS.includes(name))name="chem";
+const TABS=["chem","calc","seq","bio","eqs","papers","career"];
+function goTab(name,push){if(name==="news")name="papers";if(!TABS.includes(name))name="chem";
   TABS.forEach(t=>{$("pane-"+t).hidden=t!==name;const a=document.querySelector(`.nav a[href="#${t}"]`);if(a){if(t===name)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")}});
   if(push&&location.hash!=="#"+name){try{history.replaceState(null,"","#"+name)}catch(e){location.hash=name}}
-  if(name==="seq")runSeq();if(name==="news"&&!newsLoaded)loadNews();}
+  if(name==="seq")runSeq();if(name==="papers"&&!newsLoaded)loadNews();if(name==="career")loadCareer();}
 document.querySelectorAll(".nav a").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();goTab(a.getAttribute("href").slice(1),true);scrollTo({top:0})}));
 addEventListener("hashchange",()=>goTab(location.hash.slice(1)));
 
@@ -1281,44 +1351,70 @@ async function fromPubMed(q,signal){
 async function loadNews(){
   newsCtl?.abort();newsCtl=new AbortController();newsLoaded=true;
   const q=$("newsQ").value.trim()||TOPICS[newsTopic][1];
-  $("newsList").innerHTML="";$("newsKo").hidden=true;
+  $("newsList").innerHTML="";
   $("newsMsg").innerHTML='<span class="dots">최신 논문을 불러오고 있어요</span>';$("newsMsg").className="scanmsg";
   let items=null,src="";
   try{items=await fromEuropePMC(q,newsCtl.signal);src="Europe PMC"}catch(e){if(e.name==="AbortError")return}
   if(items===null){try{items=await fromPubMed(q,newsCtl.signal);src="PubMed"}catch(e){if(e.name==="AbortError")return}}
-  if(items===null){nmsg("논문 정보를 불러오지 못했어요. 인터넷 연결을 확인하거나, 아래 ‘믿을 수 있는 사이트’에서 직접 찾아보세요.",true);return}
+  if(items===null){nmsg("논문 정보를 불러오지 못했어요. 인터넷 연결을 확인하거나 Europe PMC, PubMed에서 직접 찾아보세요.",true);$("newsList").innerHTML=`<div class="jobsites"><a class="jobsite" href="https://europepmc.org" target="_blank" rel="noopener"><b>Europe PMC</b><span>논문 검색 →</span></a><a class="jobsite" href="https://pubmed.ncbi.nlm.nih.gov" target="_blank" rel="noopener"><b>PubMed</b><span>논문 검색 →</span></a><a class="jobsite" href="https://www.biorxiv.org" target="_blank" rel="noopener"><b>bioRxiv</b><span>프리프린트 →</span></a></div>`;return}
   newsItems=items;
   if(!items.length){nmsg("최근 30일 동안 이 주제의 논문을 찾지 못했어요. 다른 주제를 눌러 보세요.");return}
   nmsg(`${src}에서 최근 논문 ${items.length}편을 불러왔어요. 제목을 누르면 원문 페이지로 가요.`);
-  $("newsKo").hidden=!(LS.get("chem-gemini-key")||"").trim();
-  renderNews();
+  renderNews();translateNews();
 }
-function renderNews(ko){
+function renderNews(){
+  const on=$("newsKoOn").checked;
   $("newsList").innerHTML=newsItems.map((n,i)=>`<article class="news">
     <div class="meta"><span>${esc(n.date)}</span>${n.pre?'<span class="badge pre">프리프린트</span>':""}${n.oa?'<span class="badge oa">무료 원문</span>':""}</div>
     <a class="ttl" href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>
-    ${ko&&ko[i]?`<p class="ko">${esc(ko[i])}</p>`:""}
+    ${on?`<p class="ko" id="ko${i}">${n.ko?esc(n.ko):'<span class="dots wait">번역하는 중</span>'}</p>`:""}
     <p class="by">${esc(n.authors.length>120?n.authors.slice(0,120)+"…":n.authors)}</p>
     <p class="jr">${esc(n.journal)}${n.doi?` · <a href="https://doi.org/${esc(n.doi)}" target="_blank" rel="noopener">DOI</a>`:""}</p>
   </article>`).join("");
 }
-$("newsGo").addEventListener("click",loadNews);
-$("newsQ").addEventListener("keydown",e=>{if(e.key==="Enter")loadNews()});
-["newsPre","newsOA"].forEach(id=>$(id).addEventListener("change",()=>{if(newsLoaded)loadNews()}));
-$("newsKo").addEventListener("click",async()=>{
-  const key=(LS.get("chem-gemini-key")||"").trim();if(!key||!newsItems.length)return;
-  const b=$("newsKo");b.disabled=true;b.textContent="번역하는 중…";
-  const prompt="다음 생명과학 논문 제목들을 대학생이 이해하기 쉬운 자연스러운 한국어로 번역하세요. 전문 용어는 한국어(영어) 형태로 써도 좋아요. 번호 순서대로 한 줄에 하나씩, 번호 없이 번역문만 쓰세요.\n\n"+newsItems.map((n,i)=>`${i+1}. ${n.title}`).join("\n");
-  let txt=null;
+/* 제목 번역: 저장해 둔 번역 → Gemini 키(있으면) → 무료 번역(MyMemory) */
+let koCache={};try{koCache=JSON.parse(LS.get("chem-ko-titles")||"{}")||{}}catch(e){koCache={}}
+const saveKo=()=>{const k=Object.keys(koCache);if(k.length>400)k.slice(0,k.length-400).forEach(x=>delete koCache[x]);LS.set("chem-ko-titles",JSON.stringify(koCache))};
+let koRun=0;
+function showKo(i,t,bad){const el=document.getElementById("ko"+i);if(!el)return;el.textContent=t;el.classList.toggle("fail",!!bad)}
+async function koGemini(list,key){
+  const prompt="다음 생명과학 논문 제목들을 생명정보공학과 대학생이 읽기 쉬운 자연스러운 한국어로 번역하세요. 유전자·단백질 이름, 약어(CRISPR, RNA-seq 등)는 그대로 두세요. 번호 순서대로 한 줄에 하나씩, 번호 없이 번역문만 쓰세요.\n\n"+list.map((t,i)=>`${i+1}. ${t}`).join("\n");
   for(const m of ["gemini-2.5-flash","gemini-flash-latest","gemini-flash-lite-latest"]){
     try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
-      const j=await r.json();if(!r.ok){if(r.status===400||r.status===401||r.status===403)break;continue}
-      txt=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("");break}catch(e){}
+      const j=await r.json();if(!r.ok){if(r.status===400||r.status===401||r.status===403)return null;continue}
+      const lines=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").split(/\n+/).map(l=>l.replace(/^\s*\d+[.)]\s*/,"").trim()).filter(Boolean);
+      if(lines.length===list.length)return lines}catch(e){}
   }
-  b.disabled=false;b.textContent="제목 한국어로 보기";
-  if(!txt){toast("번역하지 못했어요. Gemini 키나 사용량을 확인해 주세요.");return}
-  renderNews(txt.split(/\n+/).map(l=>l.replace(/^\s*\d+[.)]\s*/,"").trim()).filter(Boolean));
-});
+  return null;
+}
+async function koFree(t){
+  const r=await fetch("https://api.mymemory.translated.net/get?langpair=en|ko&q="+encodeURIComponent(t.slice(0,480)));
+  const j=await r.json();const out=j?.responseData?.translatedText||"";
+  if(j.responseStatus!==200&&j.responseStatus!=="200"||!out||/MYMEMORY WARNING|QUERY LENGTH/i.test(out))throw new Error(String(j.responseStatus));
+  return out.replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&amp;/g,"&");
+}
+async function translateNews(){
+  if(!$("newsKoOn").checked||!newsItems.length)return;
+  const run=++koRun;
+  newsItems.forEach((n,i)=>{if(!n.ko&&koCache[n.title])n.ko=koCache[n.title];if(n.ko)showKo(i,n.ko)});
+  const todo=newsItems.map((n,i)=>i).filter(i=>!newsItems[i].ko);if(!todo.length)return;
+  const key=(LS.get("chem-gemini-key")||"").trim();
+  if(key){const res=await koGemini(todo.map(i=>newsItems[i].title),key);if(run!==koRun)return;
+    if(res){todo.forEach((i,k)=>{newsItems[i].ko=res[k];koCache[newsItems[i].title]=res[k];showKo(i,res[k])});saveKo();return}}
+  let failed=0;
+  for(let k=0;k<todo.length;k+=3){
+    await Promise.all(todo.slice(k,k+3).map(async i=>{
+      try{const t=await koFree(newsItems[i].title);if(run!==koRun)return;newsItems[i].ko=t;koCache[newsItems[i].title]=t;showKo(i,t)}
+      catch(e){failed++;if(run===koRun)showKo(i,"번역하지 못했어요",true)}
+    }));
+    if(run!==koRun)return;
+    if(failed>=3){todo.slice(k+3).forEach(i=>showKo(i,"번역하지 못했어요",true));break}
+  }
+  saveKo();
+  if(failed)nmsg("일부 제목은 번역하지 못했어요. 무료 번역은 하루 사용량이 정해져 있어요. Gemini 키를 저장해 두면 더 많이, 더 자연스럽게 번역돼요.");
+}
+$("newsKoOn").addEventListener("change",()=>{renderNews();translateNews()});
+
 
 const JOBS=[
  ["생물정보 분석가","병원·연구소·바이오 기업","NGS 같은 대용량 유전체 데이터를 분석해서 질병 관련 유전 변이를 찾아요.",["Linux","Python 또는 R","NGS 분석 도구(BWA, GATK 등)","통계"]],
@@ -1350,6 +1446,84 @@ const SITES=[["NCBI","미국 국립생물정보센터 · 서열, 유전자, PubM
  ["KOBIC","국가생명연구자원정보센터","https://www.kobic.re.kr"],["BRIC","생물학연구정보센터 · 국내 연구 소식·채용","https://www.ibric.org"],["KRIBB","한국생명공학연구원","https://www.kribb.re.kr"],
  ["Rosalind","생물정보 문제를 풀며 코딩 연습","https://rosalind.info"],["커리어넷","진로 정보와 직업 탐색","https://www.career.go.kr"],["고용24","공공 채용 정보","https://www.work24.go.kr"]];
 $("sites").innerHTML=SITES.map(s=>`<a class="site" href="${s[2]}" target="_blank" rel="noopener"><b>${s[0]}</b><span>${s[1]}</span></a>`).join("");
+
+
+/* ---------- 진로: 업계 소식 · 채용 · 기업 ---------- */
+const BIZ=[["바이오 기업 전체",'(biotech OR biopharmaceutical OR "bio company" OR pharmaceutical)'],["AI 신약개발",'("drug discovery" OR "AI drug" OR "artificial intelligence" biotech)'],["유전체·정밀의료",'(genome OR genomic OR "precision medicine" OR sequencing)'],["채용·인재",'(biotech OR pharmaceutical) (hiring OR recruitment OR employment)'],["투자·상장",'(biotech) (investment OR IPO OR funding)']];
+let bizTopic=0,bizCtl=null,careerLoaded=false;
+$("bizTopics").innerHTML=BIZ.map((t,i)=>`<button data-t="${i}" class="${i===0?"on":""}">${t[0]}</button>`).join("");
+$("bizTopics").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{bizTopic=+b.dataset.t;$("bizTopics").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));loadBiz()}));
+const bmsg=(id,t,bad)=>{$(id).textContent=t;$(id).className="scanmsg"+(bad?" bad":"")};
+const BIZ_FALLBACK=[["바이오스펙테이터","https://www.biospectator.com"],["히트뉴스","https://www.hitnews.co.kr"],["BioINwatch (생명공학정책연구센터)","https://www.bioin.or.kr"],["한국바이오협회","https://www.koreabio.org"]];
+function gdeltDate(d){if(!d||d.length<8)return"";return`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`}
+async function loadBiz(){
+  bizCtl?.abort();bizCtl=new AbortController();
+  $("bizList").innerHTML="";$("bizMsg").innerHTML='<span class="dots">최신 기사를 모으고 있어요</span>';$("bizMsg").className="scanmsg";
+  const key="chem-biz-"+bizTopic;let cached=null;try{cached=JSON.parse(sessionStorage.getItem(key)||"null")}catch(e){}
+  let arts=cached;
+  if(!arts){
+    try{
+      const q=BIZ[bizTopic][1]+" sourcelang:korean";
+      const url="https://api.gdeltproject.org/api/v2/doc/doc?mode=artlist&format=json&sort=datedesc&timespan=2weeks&maxrecords=40&query="+encodeURIComponent(q);
+      const r=await fetch(url,{signal:bizCtl.signal});const t=await r.text();
+      if(!r.ok)throw new Error(t.slice(0,80));
+      const j=JSON.parse(t);const seen=new Set();
+      arts=(j.articles||[]).filter(a=>{const k=(a.title||"").replace(/\s/g,"").slice(0,24);if(!k||seen.has(k))return false;seen.add(k);return true}).slice(0,15)
+        .map(a=>({title:a.title,url:a.url,domain:a.domain,date:gdeltDate(a.seendate)}));
+      try{sessionStorage.setItem(key,JSON.stringify(arts))}catch(e){}
+    }catch(e){if(e.name==="AbortError")return;arts=null}
+  }
+  if(!arts){bmsg("bizMsg","기사를 자동으로 불러오지 못했어요. 아래 바이오 전문 언론에서 최신 소식을 볼 수 있어요.",true);
+    $("bizList").innerHTML=`<div class="jobsites">${BIZ_FALLBACK.map(f=>`<a class="jobsite" href="${f[1]}" target="_blank" rel="noopener"><b>${f[0]}</b><span>최신 기사 보기 →</span></a>`).join("")}</div>`;return}
+  if(!arts.length){bmsg("bizMsg","최근 2주 동안 이 주제의 기사를 찾지 못했어요. 다른 주제를 눌러 보세요.");return}
+  bmsg("bizMsg",`최근 기사 ${arts.length}건이에요. 제목을 누르면 기사로 가요.`);
+  $("bizList").innerHTML=arts.map(a=>`<article class="news"><div class="meta"><span>${esc(a.date)}</span><span class="src2">${esc(a.domain||"")}</span></div><a class="ttl" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a></article>`).join("");
+}
+
+const JOBKEYS=[["생물정보","생물정보 OR 바이오인포매틱스","bioinformatics"],["유전체 분석","유전체 분석","genomics"],["AI 신약개발","AI 신약개발","computational drug discovery"],["의료 데이터","의료 데이터 분석","healthcare data scientist"],["바이오 연구원","바이오 연구원","research scientist biology"],["인턴","바이오 인턴","bioinformatics intern"]];
+let jobKey=0;
+$("jobKeys").innerHTML=JOBKEYS.map((k,i)=>`<button data-k="${i}" class="${i===0?"on":""}">${k[0]}</button>`).join("");
+$("jobKeys").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{jobKey=+b.dataset.k;$("jobKeys").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));renderJobSites();loadRemote()}));
+function renderJobSites(){
+  const ko=encodeURIComponent(JOBKEYS[jobKey][1].split(" OR ")[0]),en=encodeURIComponent(JOBKEYS[jobKey][2]);
+  const S=[["사람인","국내 최대 채용 사이트",`https://www.saramin.co.kr/zf_user/search?searchword=${ko}`],["잡코리아","대기업·제약사 공고",`https://www.jobkorea.co.kr/Search/?stext=${ko}`],
+   ["원티드","IT·바이오 스타트업",`https://www.wanted.co.kr/search?query=${ko}`],["링크드인","국내외 기업 · 영어 공고",`https://www.linkedin.com/jobs/search/?keywords=${en}&location=South%20Korea`],
+   ["BRIC 구인정보","연구실·연구소 연구원","https://www.ibric.org/bric/job/job-list.do"],["나라일터","국책 연구기관·공공기관","https://www.gojobs.go.kr"],
+   ["잡알리오","공공기관 채용 정보","https://job.alio.go.kr"],["고용24","정부 채용·청년 인턴","https://www.work24.go.kr"]];
+  $("jobSites").innerHTML=S.map(x=>`<a class="jobsite" href="${x[2]}" target="_blank" rel="noopener"><b>${x[0]}</b><span>${x[1]}</span></a>`).join("");
+}
+let remoteCtl=null;
+async function loadRemote(){
+  remoteCtl?.abort();remoteCtl=new AbortController();
+  $("remoteList").innerHTML="";$("remoteMsg").innerHTML='<span class="dots">채용 공고를 불러오고 있어요</span>';$("remoteMsg").className="scanmsg";
+  try{
+    const r=await fetch("https://remotive.com/api/remote-jobs?limit=10&search="+encodeURIComponent(JOBKEYS[jobKey][2]),{signal:remoteCtl.signal});
+    if(!r.ok)throw new Error(r.status);const j=await r.json();const jobs=(j.jobs||[]).slice(0,10);
+    if(!jobs.length){bmsg("remoteMsg","지금은 이 분야의 원격 채용 공고가 없어요. 위의 링크드인에서 찾아보세요.");return}
+    bmsg("remoteMsg",`원격 근무 공고 ${jobs.length}건이에요. 영어 공고이고, 지원 조건은 공고에서 꼭 확인하세요.`);
+    $("remoteList").innerHTML=jobs.map(x=>`<a class="rjob" href="${esc(x.url)}" target="_blank" rel="noopener"><span class="logo">${esc((x.company_name||"?").slice(0,1))}</span><span><span class="t">${esc(x.title)}</span><br><span class="m">${esc(x.company_name||"")} · ${esc(x.candidate_required_location||"")}${x.publication_date?" · "+esc(x.publication_date.slice(0,10)):""}</span></span></a>`).join("");
+  }catch(e){if(e.name==="AbortError")return;bmsg("remoteMsg","해외 채용 공고를 불러오지 못했어요. 위 채용 사이트 링크를 이용해 주세요.",true)}
+}
+
+const ORGS=[
+ ["유전체 분석","마크로젠","유전체 분석 서비스, 개인 유전체","https://www.macrogen.com"],["유전체 분석","테라젠바이오","유전체 분석, 맞춤 의료","https://www.theragenbio.com"],
+ ["유전체 분석","디엔에이링크","유전체 분석, 바이오뱅크","https://www.dnalink.com"],["유전체 분석","쓰리빌리언","AI 희귀질환 유전자 진단","https://3billion.io"],
+ ["AI·헬스케어","루닛","AI 의료 영상, 암 진단","https://www.lunit.io"],["AI·헬스케어","뷰노","AI 의료 소프트웨어","https://www.vuno.co"],
+ ["제약·바이오","삼성바이오로직스","바이오 의약품 위탁 생산","https://samsungbiologics.com"],["제약·바이오","셀트리온","바이오시밀러, 항체 의약품","https://www.celltrion.com"],
+ ["제약·바이오","유한양행","신약 연구개발","https://www.yuhan.co.kr"],["제약·바이오","GC녹십자","백신, 혈액 제제","https://www.gccorp.com"],
+ ["연구기관","한국생명공학연구원 (KRIBB)","국가 생명공학 연구","https://www.kribb.re.kr"],["연구기관","국가생명연구자원정보센터 (KOBIC)","생명 데이터 · 생물정보 분석","https://www.kobic.re.kr"],
+ ["연구기관","한국과학기술연구원 (KIST)","융합 연구, 뇌·바이오","https://www.kist.re.kr"],["연구기관","국립보건연구원","질병·보건 연구, 바이오뱅크","https://www.nih.go.kr"],
+ ["연구기관","한국과학기술정보연구원 (KISTI)","슈퍼컴퓨터, 데이터 분석","https://www.kisti.re.kr"],["연구기관","한국보건산업진흥원","바이오헬스 산업 지원","https://www.khidi.or.kr"]
+];
+const OCATS=["전체","유전체 분석","AI·헬스케어","제약·바이오","연구기관"];let orgCat="전체";
+$("orgF").innerHTML=OCATS.map(c=>`<button data-c="${c}" class="${c==="전체"?"on":""}">${c}</button>`).join("");
+$("orgF").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{orgCat=b.dataset.c;$("orgF").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));renderOrgs()}));
+function renderOrgs(){
+  $("orgs").innerHTML=ORGS.filter(o=>orgCat==="전체"||o[0]===orgCat).map(o=>{const nm=o[1].replace(/\s*\(.*\)/,"");
+    return`<div class="org"><a class="n" href="${o[3]}" target="_blank" rel="noopener">${esc(o[1])}</a><p>${esc(o[0])} · ${esc(o[2])}</p><div class="acts"><a href="https://www.saramin.co.kr/zf_user/search?searchword=${encodeURIComponent(nm)}" target="_blank" rel="noopener">채용</a><a href="https://search.naver.com/search.naver?where=news&sort=1&query=${encodeURIComponent(nm)}" target="_blank" rel="noopener">최신 뉴스</a></div></div>`}).join("");
+}
+renderJobSites();renderOrgs();
+function loadCareer(){if(careerLoaded)return;careerLoaded=true;loadBiz();setTimeout(loadRemote,300)}
 
 /* ---------- 시작 ---------- */
 calcMM(true);calcMol();calcSol();calcDil();calcBuf();renderBio();addMass();
