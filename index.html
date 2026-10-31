@@ -146,7 +146,8 @@ textarea#aiAnswer:focus,#gkey:focus{outline:none;border-color:var(--accent)}
 .fitem.bad{border-color:var(--warn)}
 .fitem .why{font-size:12px;color:var(--warn);margin-top:2px}
 .fitem.math{border-color:var(--accent);border-style:dashed}
-.fitem .mcode{font-family:var(--f-mono);font-size:12.5px;background:var(--paper);padding:4px 8px;border-radius:6px;margin-top:4px;overflow-wrap:anywhere;white-space:pre-wrap}
+.fitem .mpv{font-family:var(--f-formula);font-size:17px;text-align:left;padding:6px 0;background:none}
+.fitem .mcode{font-size:11.5px!important;color:var(--muted);font-family:var(--f-mono);font-size:12.5px;background:var(--paper);padding:4px 8px;border-radius:6px;margin-top:4px;overflow-wrap:anywhere;white-space:pre-wrap}
 .found{grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))}
 .fitem{align-items:flex-start}
 .fitem .pv{white-space:normal;overflow:visible;font-size:17px;overflow-wrap:anywhere;line-height:1.5}
@@ -971,6 +972,99 @@ const PROMPT_LINES=`첨부한 사진은 대학 전공 교재(일반화학·생�
 황산 | H2SO4
 수식 | 반응 속도식 | v = - {d [ rm H_{2} O_{2} ]} over {dt} = k [ rm H_{2} O_{2} ]^{m} [ rm KI ]^{n}`;
 
+/* ---------- 수학 식 → 한글 수식 편집기 코드 ---------- */
+function toHwpMath(src){
+  let s=String(src).trim();
+  if(/\bover\b|_\{|\^\{/.test(s))return s; // 이미 한글 수식 문법
+  s=s.replace(/·|∙|\*/g," cdot ").replace(/×/g," times ").replace(/≈/g," APPROX ").replace(/≠/g," != ").replace(/≤/g," <= ").replace(/≥/g," >= ")
+     .replace(/Δ/g,"DELTA ").replace(/α/g,"alpha ").replace(/β/g,"beta ").replace(/γ/g,"gamma ").replace(/λ/g,"lambda ").replace(/μ/g,"mu ").replace(/ε/g,"epsilon ").replace(/π/g,"pi ").replace(/θ/g,"theta ").replace(/°/g,"^circ ").replace(/\bEa\b/g,"E_a").replace(/\](\d+|t)(?![A-Za-z0-9])/g,"]_$1").replace(/−/g,"-").replace(/→/g," -> ");
+  const chem=t=>t.replace(/(\d+)/g,"_{$1} ").replace(/\s+/g," ").trim();
+  // 토큰 나누기
+  const toks=[];let i=0;
+  while(i<s.length){
+    const c=s[i];
+    if(c===" "){i++;continue}
+    if(c==="["){let d=0,j=i;for(;j<s.length;j++){if(s[j]==="[")d++;else if(s[j]==="]"){d--;if(!d)break}}
+      toks.push({t:"g",v:"[ rm "+chem(s.slice(i+1,j))+" ]"});i=j+1;continue}
+    if(c==="("){let d=0,j=i;for(;j<s.length;j++){if(s[j]==="(")d++;else if(s[j]===")"){d--;if(!d)break}}
+      toks.push({t:"p",v:toHwpMath(s.slice(i+1,j))});i=j+1;continue}
+    if(c==="^"||c==="_"){i++;let v;
+      if(s[i]==="("||s[i]==="{"){const cl=s[i]==="("?")":"}";let d=0,j=i;for(;j<s.length;j++){if(s[j]===s[i])d++;else if(s[j]===cl){d--;if(!d)break}}v=toHwpMath(s.slice(i+1,j));i=j+1}
+      else{const m=s.slice(i).match(/^-?[A-Za-z0-9.]+/);v=m?m[0]:"";i+=v.length}
+      const last=toks.pop()||{t:"w",v:""};toks.push({t:"w",v:`${last.t==="p"?"("+last.v+")":last.v}${c}{${v}}`});continue}
+    if(c==="/"){toks.push({t:"div"});i++;continue}
+    let m=s.slice(i).match(/^(->|<=|>=|!=|[=+\-<>,])/);if(m){toks.push({t:"op",v:m[0]});i+=m[0].length;continue}
+    m=s.slice(i).match(/^[A-Za-z]+[0-9.]*|^[0-9.]+/);if(m){toks.push({t:"w",v:m[0]});i+=m[0].length;continue}
+    toks.push({t:"w",v:c});i++;
+  }
+  // 이어진 글자 묶기 (곱셈: d [A] 처럼 붙은 것)
+  const units=[];
+  for(const k of toks){
+    if(k.t==="op"||k.t==="div"){units.push(k);continue}
+    const prev=units[units.length-1];
+    const frac=k.t==="p"&&/^\{/.test(k.v)&&k.v.includes("} over {")&&!/ (=|\+|-) /.test(k.v.replace(/\{[^{}]*\}/g,""));
+    const val=k.t==="p"&&!frac?"("+k.v+")":k.v;
+    if(prev&&prev.t==="u")prev.v+=" "+val;else units.push({t:"u",v:val,raw:k.t==="p"?k.v:null});
+  }
+  // 나누기 → over
+  const out=[];
+  for(let j=0;j<units.length;j++){
+    const u=units[j];
+    if(u.t==="div"&&out.length&&units[j+1]&&units[j+1].t==="u"){
+      const a=out.pop(),b=units[++j];
+      const strip=x=>x.raw!=null&&x.v==="("+x.raw+")"?x.raw:x.v;
+      out.push({t:"u",v:`{${strip(a)}} over {${strip(b)}}`,raw:null});continue}
+    out.push(u);
+  }
+  return out.map(u=>u.t==="div"?"/":u.v).join(" ").replace(/\{t1\} over \{2\}/g,"t_{1/2}").replace(/\s+/g," ").replace(/\( /g,"(").replace(/ \)/g,")").trim();
+}
+
+function hwpToHtml(code){
+  const W={cdot:"·",times:"×",APPROX:"≈",DELTA:"Δ",delta:"δ",alpha:"α",beta:"β",gamma:"γ",lambda:"λ",mu:"μ",epsilon:"ε",pi:"π",theta:"θ",sigma:"σ",SIGMA:"Σ",sum:"∑",circ:"°",prime:"′",inf:"∞",LEFT:"",RIGHT:"",left:"",right:"",rm:"",it:"","->":"→","<->":"⇌","<=":"≤",">=":"≥","!=":"≠"};
+  const esc2=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  let i=0,upright=false;const s=String(code);
+  function parseSeq(stop){
+    const items=[];
+    while(i<s.length){
+      const c=s[i];
+      if(c===stop){i++;break}
+      if(c===" "||c==="~"||c==="`"){i++;continue}
+      if(c==="{"){i++;items.push({g:parseSeq("}")});continue}
+      if(c==="_"||c==="^"){i++;let arg;while(s[i]===" ")i++;if(s[i]==="{"){i++;arg={g:parseSeq("}")}}else{const m=s.slice(i).match(/^[A-Za-z0-9.+\-]/);arg={w:m?m[0]:""};i+=arg.w.length}
+        items.push({sx:c,arg});continue}
+      let m=s.slice(i).match(/^(<->|->|<=|>=|!=)/);if(m){items.push({w:m[0]});i+=m[0].length;continue}
+      m=s.slice(i).match(/^[A-Za-z]+/);if(m){items.push({w:m[0]});i+=m[0].length;continue}
+      m=s.slice(i).match(/^[0-9.]+/);if(m){items.push({w:m[0]});i+=m[0].length;continue}
+      items.push({w:c});i++;
+    }
+    return items;
+  }
+  function render(items){
+    let out=[];
+    for(let k=0;k<items.length;k++){
+      const it=items[k];
+      if(it.w==="over"&&out.length&&items[k+1]){const a=out.pop();const b=render([items[++k]]);out.push(`<span class="fr"><span>${a}</span><span>${b}</span></span>`);continue}
+      if(it.sx){const a=render([it.arg]);const tag=it.sx==="_"?"sub":"sup";if(out.length)out[out.length-1]+=`<${tag}>${a}</${tag}>`;else out.push(`<${tag}>${a}</${tag}>`);continue}
+      if(it.g){out.push(render(it.g));continue}
+      const w=it.w;
+      if(w==="rm"){upright=true;continue}
+      if(w==="it"){upright=false;continue}
+      if(w==="]"||w===")")upright=false;
+      if(/^[=+\-<>]$/.test(w)){out.push(` ${esc2(w)} `);continue}
+      if(w in W){out.push(W[w]);continue}
+      if(/^[A-Za-z]$/.test(w)&&!upright){out.push(`<i>${w}</i>`);continue}
+      if(/^(ln|log|exp|sin|cos|tan|lim)$/.test(w)){out.push(w+" ");continue}
+      out.push(esc2(w));
+    }
+    return out.join("").replace(/ {2,}/g," ");
+  }
+  return render(parseSeq(null)).trim();
+}
+
+function isMathLike(eq){
+  const t=eq.replace(/<=>|->|=>|→|⇌/g,"");
+  return /=/.test(t)||/\/dt|d\[|\bk\[|\^[a-z]\b|\bln\b|\blog\b/.test(eq);
+}
 function readAIText(txt){
   txt=String(txt||"").replace(/```[a-z]*\n?/gi,"").trim();
   const j=txt.match(/\[[\s\S]*\]/);
@@ -981,12 +1075,15 @@ function readAIText(txt){
     if(!l)return;
     let name="",eq=l;
     const bar=l.split(/\s*[|｜]\s*/);
-    if(/^수식$/.test(bar[0])&&bar.length>=3){out.push({kind:"math",name:bar[1].trim().slice(0,40),eq:bar.slice(2).join(" | ").trim()});return}
+    if(/^수식$/.test(bar[0])&&bar.length>=3){out.push({kind:"math",name:bar[1].trim().slice(0,40),eq:toHwpMath(bar.slice(2).join(" | ").trim())});return}
     if(bar.length>=2){name=bar[0];eq=bar.slice(1).join(" ")}
     else{const c=l.match(/^([가-힣()\s·,]+?)\s*[:：]\s*(.+)$/);if(c){name=c[1];eq=c[2]}}
     if(!/[A-Z]/.test(eq))return;
     if(/^[a-z]?[A-Z](?:(?:\+|->|→|<=>|=)[a-z]?[A-Z])+$/.test(eq.replace(/\s/g,"")))return; // aA + bB -> cC 같은 일반식은 빼기
-    out.push({name:name.trim().slice(0,40),eq:eq.trim()});
+    eq=eq.trim();
+    let chemOK=true;try{parse(eq)}catch(e){chemOK=false}
+    if(!chemOK&&isMathLike(eq)){out.push({kind:"math",name:name.trim().slice(0,40),eq:toHwpMath(eq)});return}
+    out.push({name:name.trim().slice(0,40),eq});
   });
   return out;
 }
@@ -1157,7 +1254,8 @@ function renderFound(){
     const d=document.createElement("div");
     if(f.kind==="math"){
       d.className="fitem math";
-      d.innerHTML=`<div class="fbody"><span class="n"></span><code class="mcode"></code></div><button>수식용 복사</button>`;
+      let pv="";try{pv=hwpToHtml(f.eq)}catch(e){}
+      d.innerHTML=`<div class="fbody"><span class="n"></span><span class="pv mpv render">${pv}</span><code class="mcode"></code></div><button>수식용 복사</button>`;
       d.querySelector(".n").textContent=(photos.length>1&&f.photo?`사진 ${f.photo} · `:"")+"수식 · "+(f.name||"수학 식");
       d.querySelector(".mcode").textContent=f.eq;
       d.querySelector("button").addEventListener("click",e=>copyText(f.eq,e.currentTarget));
