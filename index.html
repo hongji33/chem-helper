@@ -37,6 +37,7 @@
   --paper:#0E1320; --card:#161D2E; --ink:#E6EBF5; --muted:#9AA6BF; --line:#2A3450;
   --accent:#7D9BFF; --accent-ink:#0E1320; --tile:#1D2747; --ok:#4BD99A; --ok-bg:#12352A; --warn:#FF9F5A; --warn-bg:#3A2316; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
 .wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
@@ -143,6 +144,8 @@ textarea#aiAnswer:focus,#gkey:focus{outline:none;border-color:var(--accent)}
 .fitem .fbody{flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer}
 .fitem .n{font-size:12.5px;color:var(--muted)}
 .fitem.bad{border-color:var(--warn)}
+.found{grid-template-columns:1fr}
+.fitem .pv{white-space:normal;overflow:visible;font-size:18px;overflow-wrap:anywhere}
 .fitem.bad .pv{font-family:var(--f-mono);font-size:13px;color:var(--warn)}
 .fitem button{padding:4px 8px;font-size:12px}
 .dots::after{content:"";animation:dots 1.2s steps(4) infinite}
@@ -311,6 +314,13 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
 
 .mini{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:13.5px}
 .mini button{padding:4px 10px;font-size:12.5px}
+.keybox{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1.5px solid var(--accent);border-radius:10px;background:var(--tile);margin-bottom:12px}
+.keybox p{margin:0;font-size:13px;color:var(--muted)}
+.keybox a{color:var(--accent);font-weight:700}
+.keybox #gkey{flex:1 1 240px;min-width:0;width:auto;margin:0}
+.more{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.more summary{font-size:13.5px;color:var(--muted);font-weight:500}
+.moregrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px;margin-top:10px}
 @media (max-width:520px){.out{grid-template-columns:1fr}.out button{grid-row:auto;grid-column:1;justify-self:start}.out .v{grid-column:1}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -364,75 +374,76 @@ header{gap:12px}.el{width:38px;height:44px}.el b{font-size:18px}
 
   <section class="card photo" id="photoSec">
     <h2>교재 사진으로 가져오기</h2>
-    <p class="sub">전공 교재나 강의 자료를 찍어 올리면 AI가 사진 속 화학식을 읽어서 정리해 줘요.</p>
+    <p class="sub">사진을 고르면 AI가 화학식을 바로 읽어서, 한글에 붙여 넣을 수 있게 정리해 줘요.</p>
+
+    <div class="keybox" id="keybox" hidden>
+      <b>처음 한 번만: Gemini 키 저장</b>
+      <p><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>에서 무료 키(AQ.로 시작)를 만들어 붙여 넣으세요. 키는 이 기기에만 저장돼요.</p>
+      <div class="inrow">
+        <input id="gkey" type="password" autocomplete="off" spellcheck="false" placeholder="AQ.로 시작하는 키를 붙여 넣으세요" aria-label="Gemini API 키">
+        <button class="primary" id="saveKey">저장</button>
+      </div>
+    </div>
+
     <div class="drop" id="drop">
       <input type="file" id="photo" accept="image/*" hidden>
       <input type="file" id="photoCam" accept="image/*" capture="environment" hidden>
       <img id="thumb" alt="올린 사진" hidden>
       <div class="dropmsg" id="dropmsg">
-        <b>① 사진 고르기</b>
+        <b>사진을 고르면 바로 읽어요</b>
         <span>여기를 누르거나, 사진을 끌어다 놓거나, Ctrl+V로 붙여 넣으세요.</span>
       </div>
     </div>
-    <div class="inrow" style="margin-top:10px">
+    <div class="inrow" style="margin-top:10px;align-items:center">
       <button id="camBtn">📷 카메라로 찍기</button>
       <button id="galBtn">🖼 앨범에서 고르기</button>
+      <button class="primary" id="scan" disabled>🔍 다시 읽기</button>
+      <button id="stopScan" hidden>멈추기</button>
     </div>
 
-    <div class="ways">
-      <div class="way">
-        <b>② 키 없이 읽기 <small>누구나 · 무료</small></b>
-        <p><b>사진과 질문 문장을 둘 다</b> AI에 넣어야 해요. 문장만 보내면 “사진을 첨부해 주세요”라고 답해요.</p>
-        <ol class="mini">
-          <li><button id="copyImg" disabled>🖼 사진 복사</button> → AI 입력 칸에 <kbd>Ctrl</kbd>+<kbd>V</kbd> (사진이 붙었는지 확인)</li>
-          <li><button id="copyPrompt">📋 문장 복사</button> → 같은 칸에 한 번 더 <kbd>Ctrl</kbd>+<kbd>V</kbd> → 보내기</li>
-          <li>AI 답을 복사해서 아래 ③ 칸에 붙여 넣기</li>
-        </ol>
-        <div class="inrow"><button class="primary" id="shareAI" disabled>📤 휴대폰: 사진을 AI 앱으로 보내기</button></div>
-        <div class="links">
-          <a href="https://chatgpt.com" target="_blank" rel="noopener">ChatGPT</a>
-          <a href="https://gemini.google.com" target="_blank" rel="noopener">Gemini</a>
-          <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a>
-        </div>
-      </div>
-      <div class="way">
-        <b>② Gemini 키로 바로 읽기 <small>키 있는 사람</small></b>
-        <p>키를 한 번 저장해 두면 버튼 하나로 사진을 바로 읽어요.</p>
-        <div class="inrow" style="align-items:center">
-          <button class="primary" id="scan" disabled>🔍 바로 읽기</button>
-          <button id="stopScan" hidden>멈추기</button>
-        </div>
-        <details class="keyset" id="keyset">
-          <summary>Gemini 키 설정</summary>
-          <div class="inrow" style="margin-top:8px">
-            <input id="gkey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza로 시작하는 키" aria-label="Gemini API 키">
-            <button id="saveKey">저장</button>
-            <button id="delKey">지우기</button>
+    <p class="scanmsg" id="scanmsg" aria-live="polite"></p>
+    <div class="found" id="found"></div>
+    <div class="inrow" id="foundActs" style="margin-top:10px" hidden>
+      <button class="primary" id="copyAllRich">📄 모두 한글 본문용으로 복사</button>
+      <button id="copyAllHwp">∑ 모두 수식 편집기용으로 복사</button>
+      <button id="addAllFound">＋ 모아두기에 저장</button>
+    </div>
+    <p class="hint">사진 속 글자를 읽는 거라 가끔 틀릴 수 있어요. 식을 누르면 위 칸에서 확인하고 고칠 수 있어요.</p>
+
+    <details class="more">
+      <summary>설정 · 키가 없을 때</summary>
+      <div class="moregrid">
+        <div class="way">
+          <b>Gemini 키 · 모델</b>
+          <div class="inrow" style="align-items:center">
+            <span class="hint" style="margin:0" id="keyState">저장된 키 없음</span>
+            <button id="editKey">키 바꾸기</button>
+            <button id="delKey">키 지우기</button>
           </div>
-          <div class="inrow" style="margin-top:8px;align-items:center">
+          <div class="inrow" style="align-items:center">
             <label for="gmodel" class="hint" style="margin:0">모델</label>
             <select id="gmodel">
-              <option value="auto">자동 (안 되면 다음 모델로)</option>
+              <option value="auto">자동 (Gemini 3.8 Flash → 안 되면 다음 모델)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
               <option value="gemini-2.5-flash">gemini-2.5-flash</option>
               <option value="gemini-flash-latest">gemini-flash-latest</option>
               <option value="gemini-flash-lite-latest">gemini-flash-lite-latest</option>
             </select>
           </div>
-          <p class="hint" style="margin-top:6px">키는 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>에서 무료로 받아요(만 18세 이상). 키는 이 기기의 브라우저에만 저장돼요.</p>
-        </details>
+        </div>
+        <div class="way">
+          <b>키가 없을 때 (AI 채팅 이용)</b>
+          <p>ChatGPT·Gemini 채팅에 사진과 문장을 넣고, 받은 답을 아래 칸에 붙여 넣으면 정리돼요.</p>
+          <div class="inrow">
+            <button id="copyImg" disabled>🖼 사진 복사</button>
+            <button id="copyPrompt">📋 문장 복사</button>
+            <button id="shareAI" disabled>📤 휴대폰: AI 앱으로 보내기</button>
+          </div>
+          <textarea id="aiAnswer" rows="3" placeholder="AI 답을 여기에 붙여 넣으세요"></textarea>
+          <div class="inrow"><button id="parseAnswer">정리하기</button></div>
+        </div>
       </div>
-    </div>
-
-    <div class="way" style="margin-top:10px">
-      <b>③ AI 답 붙여넣기 <small>키 없이 읽기를 쓴 경우</small></b>
-      <textarea id="aiAnswer" rows="4" placeholder="세포 호흡 | C6H12O6 + 6O2 -> 6CO2 + 6H2O&#10;ATP 가수분해 | C10H16N5O13P3 + H2O -> C10H15N5O10P2 + H3PO4"></textarea>
-      <div class="inrow" style="margin-top:8px"><button class="primary" id="parseAnswer">정리하기</button></div>
-    </div>
-
-    <p class="scanmsg" id="scanmsg" aria-live="polite"></p>
-    <div class="found" id="found"></div>
-    <div class="inrow" style="margin-top:8px"><button id="addAllFound" hidden>찾은 식 모두 모아두기</button></div>
-    <p class="hint">사진 속 글자를 읽는 거라 가끔 틀릴 수 있어요. 찾은 식을 눌러 위 칸에서 확인한 뒤 써 주세요.</p>
+    </details>
   </section>
 
   <section>
@@ -963,22 +974,29 @@ $("parseAnswer").addEventListener("click",()=>{
 });
 
 /* Gemini 키 */
-const savedKey=LS.get("chem-gemini-key");if(savedKey)$("gkey").value=savedKey;
+const getKey=()=>(LS.get("chem-gemini-key")||"").trim()||sessKey;
+let sessKey="";
+function keyUI(){const k=getKey();$("keybox").hidden=!!k;$("keyState").textContent=k?"키 저장됨 (…"+k.slice(-4)+")":"저장된 키 없음";$("gkey").value=""}
 $("saveKey").addEventListener("click",()=>{const k=$("gkey").value.trim();if(!k){toast("키를 먼저 붙여 넣어 주세요.");return}
-  toast(LS.set("chem-gemini-key",k)?"이 컴퓨터에 키를 저장했어요.":"저장할 수 없는 브라우저예요. 이번에만 쓸 수 있어요.");updScan()});
-$("delKey").addEventListener("click",()=>{LS.del("chem-gemini-key");$("gkey").value="";toast("키를 지웠어요.");updScan()});
-$("gkey").addEventListener("input",updScan);
-const savedModel=LS.get("chem-gemini-model");if(savedModel)$("gmodel").value=savedModel;
-$("gmodel").addEventListener("change",()=>LS.set("chem-gemini-model",$("gmodel").value));
-function updScan(){$("scan").disabled=!(photoFile&&$("gkey").value.trim());$("shareAI").disabled=!photoFile;$("copyImg").disabled=!photoFile}
+  if(!LS.set("chem-gemini-key",k)){sessKey=k;toast("이 브라우저는 저장이 안 돼서, 이번에만 쓸 수 있어요.")}else toast("키를 저장했어요. 이제 사진만 고르면 돼요.");
+  keyUI();updScan();if(photoFile)$("scan").click()});
+$("gkey").addEventListener("keydown",e=>{if(e.key==="Enter")$("saveKey").click()});
+$("delKey").addEventListener("click",()=>{LS.del("chem-gemini-key");sessKey="";keyUI();updScan();toast("키를 지웠어요.")});
+$("editKey").addEventListener("click",()=>{$("keybox").hidden=false;$("gkey").focus();$("photoSec").scrollIntoView({behavior:"smooth"})});
+const savedModel=LS.get("chem-gemini-model");if(savedModel&&[...$("gmodel").options].some(o=>o.value===savedModel))$("gmodel").value=savedModel;
+$("gmodel").addEventListener("change",()=>{LS.set("chem-gemini-model",$("gmodel").value);LS.del("chem-gemini-good")});
+function updScan(){$("scan").disabled=!(photoFile&&getKey());$("shareAI").disabled=!photoFile;$("copyImg").disabled=!photoFile}
+keyUI();
 
 /* 사진 올리기 */
 function setPhoto(f){
   if(!f||!/^image\//.test(f.type)){smsg("사진 파일(JPG, PNG)을 올려 주세요.",true);return}
   photoFile=f;const t=$("thumb");try{if(t.src)URL.revokeObjectURL(t.src)}catch(e){}
   t.src=URL.createObjectURL(f);t.hidden=false;
-  $("dropmsg").querySelector("b").textContent="📷 다른 사진으로 바꾸기";
-  updScan();smsg($("gkey").value.trim()?"사진을 골랐어요. ‘바로 읽기’를 누르세요.":"사진을 골랐어요. ‘사진 복사’ → ‘문장 복사’ 순서로 AI에 붙여 넣으세요.");$("dropmsg").querySelector("b").textContent="① 다른 사진으로 바꾸기";
+  $("dropmsg").querySelector("b").textContent="다른 사진으로 바꾸기";
+  updScan();
+  if(getKey())$("scan").click();
+  else{smsg("위 칸에 Gemini 키를 저장하면 바로 읽어요.",true);$("keybox").hidden=false;$("gkey").focus()}
 }
 $("drop").tabIndex=0;
 $("drop").addEventListener("click",()=>$("photo").click());
@@ -1020,41 +1038,61 @@ function shrink(file){ // 긴 변 1600px JPEG로 줄여서 base64
     c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
     res(c.toDataURL("image/jpeg",0.9).split(",")[1])};img.onerror=()=>rej(new Error("img"));img.src=URL.createObjectURL(file)});
 }
-async function askGemini(model,key,b64,signal){
+const MODEL_NAME={"gemini-3.8-flash":"Gemini 3.8 Flash","gemini-flash-latest":"Gemini Flash (최신)","gemini-2.5-flash":"Gemini 2.5 Flash","gemini-flash-lite-latest":"Gemini Flash Lite"};
+const isKeyErr=e=>e&&(e.status===401||e.status===403||(e.status===400&&/api key|API_KEY/i.test(e.message)));
+async function askGemini(model,key,b64,signal,fast){
+  const body={contents:[{parts:[{text:PROMPT_LINES},{inline_data:{mime_type:"image/jpeg",data:b64}}]}]};
+  if(fast&&/gemini-3/.test(model))body.generationConfig={thinkingConfig:{thinkingLevel:"low"}};
   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{
-    method:"POST",signal,headers:{"Content-Type":"application/json","x-goog-api-key":key},
-    body:JSON.stringify({contents:[{parts:[{text:PROMPT_LINES},{inline_data:{mime_type:"image/jpeg",data:b64}}]}]})});
+    method:"POST",signal,headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify(body)});
   const j=await r.json().catch(()=>({}));
   if(!r.ok){const e=new Error(j?.error?.message||("HTTP "+r.status));e.status=r.status;throw e}
   return (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("\n");
 }
+async function askWithTimeout(model,key,b64,outer,ms,fast){
+  const ctl=new AbortController();const onAbort=()=>ctl.abort();outer.addEventListener("abort",onAbort);
+  let timedOut=false;const t=setTimeout(()=>{timedOut=true;ctl.abort()},ms);
+  try{return await askGemini(model,key,b64,ctl.signal,fast)}
+  catch(e){if(timedOut){const x=new Error("timeout");x.timeout=true;throw x}throw e}
+  finally{clearTimeout(t);outer.removeEventListener("abort",onAbort)}
+}
+let scanTimer=null;
 $("scan").addEventListener("click",async()=>{
-  const key=$("gkey").value.trim();if(!key||!photoFile)return;
-  scanCtl=new AbortController();$("scan").disabled=true;$("stopScan").hidden=false;$("addAllFound").hidden=true;$("found").innerHTML="";
-  $("scanmsg").innerHTML='<span class="dots">Gemini가 사진 속 화학식을 읽고 있어요</span>';$("scanmsg").className="scanmsg";
-  const pick=$("gmodel").value;const models=pick==="auto"?["gemini-2.5-flash","gemini-flash-latest","gemini-flash-lite-latest"]:[pick];
+  const key=getKey();if(!key||!photoFile)return;
+  scanCtl=new AbortController();$("scan").disabled=true;$("stopScan").hidden=false;$("foundActs").hidden=true;$("found").innerHTML="";
+  const t0=Date.now();let curModel="";
+  const tick=()=>{$("scanmsg").innerHTML=`<span class="dots">${esc(MODEL_NAME[curModel]||curModel)}로 읽는 중</span> · ${Math.round((Date.now()-t0)/1000)}초 <span class="hint">(보통 5~20초)</span>`;$("scanmsg").className="scanmsg"};
+  clearInterval(scanTimer);scanTimer=setInterval(tick,1000);
+  const pick=$("gmodel").value;let models=pick==="auto"?["gemini-3.8-flash","gemini-flash-latest","gemini-2.5-flash","gemini-flash-lite-latest"]:[pick];
+  const good=LS.get("chem-gemini-good");if(pick==="auto"&&good&&models.includes(good))models=[good,...models.filter(m=>m!==good)];
   try{
     const b64=await shrink(photoFile);let text=null,last=null;
     for(const m of models){
-      try{text=await askGemini(m,key,b64,scanCtl.signal);break}
-      catch(e){if(e.name==="AbortError")throw e;last=e;if(e.status===400||e.status===401||e.status===403)break}
+      curModel=m;tick();
+      try{
+        try{text=await askWithTimeout(m,key,b64,scanCtl.signal,40000,true)}
+        catch(e){if(e.status===400&&!isKeyErr(e)&&/gemini-3/.test(m))text=await askWithTimeout(m,key,b64,scanCtl.signal,40000,false);else throw e}
+        if(pick==="auto")LS.set("chem-gemini-good",m);break;
+      }catch(e){if(e.name==="AbortError"&&!e.timeout)throw e;last=e;if(isKeyErr(e))break}
     }
     if(text===null)throw last;
     foundList=readAIText(text);renderFound();
+    if(foundList.length)$("scanmsg").textContent+=` (${MODEL_NAME[curModel]||curModel} · ${Math.round((Date.now()-t0)/1000)}초)`;
   }catch(e){
     if(e&&e.name==="AbortError")smsg("멈췄어요.");
     else if(e&&e.message==="img")smsg("이 사진은 열 수 없어요. 다른 사진(JPG, PNG)으로 올려 주세요.",true);
-    else if(e&&(e.status===400&&/key/i.test(e.message)||e.status===401||e.status===403))smsg("API 키가 맞지 않아요. 키를 다시 확인해 주세요.",true);
-    else if(e&&e.status===429)smsg("무료 사용량을 다 썼어요. 잠시 뒤에 하거나 ‘모델’에서 다른 것을 골라 보세요.",true);
+    else if(isKeyErr(e))smsg("API 키가 맞지 않아요. ‘설정 · 키가 없을 때’에서 키를 다시 저장해 주세요.",true);
+    else if(e&&e.timeout)smsg("Gemini가 너무 오래 답하지 않아요. 잠시 뒤 ‘다시 읽기’를 누르거나, 설정에서 모델을 gemini-2.5-flash로 바꿔 보세요.",true);
+    else if(e&&e.status===429)smsg("무료 사용량을 다 썼어요. 1분쯤 뒤에 ‘다시 읽기’를 누르세요.",true);
     else if(e&&e.status)smsg(`Gemini가 답하지 못했어요 (${e.status}). 잠시 뒤에 다시 눌러 주세요.`,true);
     else smsg("인터넷 연결을 확인하고 다시 눌러 주세요.",true);
-  }finally{updScan();$("stopScan").hidden=true}
+  }finally{clearInterval(scanTimer);updScan();$("stopScan").hidden=true}
 });
 $("stopScan").addEventListener("click",()=>scanCtl?.abort());
 
 /* 찾은 식 보여주기 */
 function renderFound(){
-  const F=$("found");F.innerHTML="";$("addAllFound").hidden=true;
+  const F=$("found");F.innerHTML="";$("foundActs").hidden=true;
   if(!foundList.length){smsg("화학식을 찾지 못했어요. 사진을 가까이 찍거나, AI의 답이 ‘이름 | 식’ 모양인지 확인해 주세요.",true);return}
   let okN=0;
   foundList.forEach(f=>{
@@ -1069,9 +1107,12 @@ function renderFound(){
       if(!saved.includes(norm)){saved.push(norm);store();renderList()}toast("모아둔 식에 추가했어요.")});
     F.appendChild(d);
   });
-  smsg(`${foundList.length}개를 찾았어요. 식을 누르면 위 칸으로 불러와서 확인하고 복사할 수 있어요.`);
-  $("addAllFound").hidden=okN===0;
+  smsg(`${foundList.length}개를 찾았어요. 아래 버튼으로 한 번에 복사하거나, 식을 눌러 하나씩 확인하세요.`);
+  $("foundActs").hidden=okN===0;
 }
+function foundBuilt(){return foundList.map(f=>{try{return build(parse(f.eq))}catch(e){return null}}).filter(Boolean)}
+$("copyAllRich").addEventListener("click",e=>{const os=foundBuilt();if(!os.length)return;copyRich(os.map(o=>o.rich).join("<br>"),os.map(o=>o.uni).join("\n"),e.currentTarget)});
+$("copyAllHwp").addEventListener("click",e=>{const os=foundBuilt();if(!os.length)return;copyText(os.map(o=>o.hwp).join(" # "),e.currentTarget)});
 $("addAllFound").addEventListener("click",()=>{let n=0;
   foundList.forEach(f=>{try{const s=toInput(parse(f.eq));if(!saved.includes(s)){saved.push(s);n++}}catch(e){}});
   store();renderList();toast(n?`${n}개를 모아둔 식에 추가했어요.`:"이미 모두 모아둔 식이에요.")});
@@ -1379,7 +1420,7 @@ let koRun=0;
 function showKo(i,t,bad){const el=document.getElementById("ko"+i);if(!el)return;el.textContent=t;el.classList.toggle("fail",!!bad)}
 async function koGemini(list,key){
   const prompt="다음 생명과학 논문 제목들을 생명정보공학과 대학생이 읽기 쉬운 자연스러운 한국어로 번역하세요. 유전자·단백질 이름, 약어(CRISPR, RNA-seq 등)는 그대로 두세요. 번호 순서대로 한 줄에 하나씩, 번호 없이 번역문만 쓰세요.\n\n"+list.map((t,i)=>`${i+1}. ${t}`).join("\n");
-  for(const m of ["gemini-2.5-flash","gemini-flash-latest","gemini-flash-lite-latest"]){
+  for(const m of ["gemini-3.8-flash","gemini-flash-latest","gemini-2.5-flash","gemini-flash-lite-latest"]){
     try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
       const j=await r.json();if(!r.ok){if(r.status===400||r.status===401||r.status===403)return null;continue}
       const lines=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").split(/\n+/).map(l=>l.replace(/^\s*\d+[.)]\s*/,"").trim()).filter(Boolean);
@@ -1398,7 +1439,7 @@ async function translateNews(){
   const run=++koRun;
   newsItems.forEach((n,i)=>{if(!n.ko&&koCache[n.title])n.ko=koCache[n.title];if(n.ko)showKo(i,n.ko)});
   const todo=newsItems.map((n,i)=>i).filter(i=>!newsItems[i].ko);if(!todo.length)return;
-  const key=(LS.get("chem-gemini-key")||"").trim();
+  const key=getKey();
   if(key){const res=await koGemini(todo.map(i=>newsItems[i].title),key);if(run!==koRun)return;
     if(res){todo.forEach((i,k)=>{newsItems[i].ko=res[k];koCache[newsItems[i].title]=res[k];showKo(i,res[k])});saveKo();return}}
   let failed=0;
